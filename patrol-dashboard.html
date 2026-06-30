@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard ตรวจจุด รปภ.</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ===================== CSS VARIABLES ===================== */
+:root {
+  --bg: #f0f2f5; --surface: #fff; --surface2: #f8fafc; --border: #e2e8f0;
+  --text: #1a202c; --text2: #64748b; --text3: #94a3b8;
+  --primary: #0f3460; --primary-light: #1a4a8a; --accent: #e94560;
+  --green: #22c55e; --green-bg: #dcfce7; --green-text: #16a34a;
+  --red: #ef4444; --red-bg: #fee2e2; --red-text: #dc2626;
+  --yellow: #f59e0b; --yellow-bg: #fef3c7; --yellow-text: #92400e;
+  --purple: #8b5cf6; --purple-bg: #ede9fe; --purple-text: #6d28d9;
+  --blue: #3b82f6; --blue-bg: #dbeafe; --blue-text: #1d4ed8;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.05);
+  --radius: 12px; --radius-sm: 8px;
+  --header-h: 64px;
+}
+[data-theme="dark"] {
+  --bg: #0d1117; --surface: #161b22; --surface2: #1c2128; --border: #30363d;
+  --text: #e6edf3; --text2: #8b949e; --text3: #484f58;
+  --primary: #1f6feb; --primary-light: #388bfd;
+  --shadow: 0 1px 3px rgba(0,0,0,.4); --shadow-md: 0 4px 6px rgba(0,0,0,.5);
+}
+
+/* ===================== RESET & BASE ===================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Segoe UI', 'Noto Sans Thai', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; transition: background .3s, color .3s; }
+button { cursor: pointer; font-family: inherit; }
+select, input { font-family: inherit; }
+
+/* ===================== HEADER ===================== */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: linear-gradient(135deg, #0f3460 0%, #16213e 50%, #0a0a2e 100%);
+  color: #fff; height: var(--header-h);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; box-shadow: 0 2px 16px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .header { background: linear-gradient(135deg, #010409 0%, #0d1117 100%); border-bottom: 1px solid var(--border); }
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header-logo { width: 38px; height: 38px; background: rgba(255,255,255,.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.header-title h1 { font-size: 16px; font-weight: 700; letter-spacing: .3px; }
+.header-title p { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+.header-btn { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); border-radius: 8px; color: #fff; padding: 6px 12px; font-size: 12px; display: flex; align-items: center; gap: 5px; transition: background .2s; }
+.header-btn:hover { background: rgba(255,255,255,.2); }
+.file-badge { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 4px 10px; font-size: 11px; color: rgba(255,255,255,.7); }
+.file-badge strong { color: #fff; }
+#insightsBadge { background: rgba(234,69,96,.2); border-color: rgba(234,69,96,.4); color: #ff8fa3; display: none; }
+
+/* ===================== IMPORT ZONE ===================== */
+.import-section { padding: 16px 24px 0; }
+.import-zone {
+  background: var(--surface); border: 2px dashed var(--border);
+  border-radius: var(--radius); padding: 22px 20px; text-align: center;
+  cursor: pointer; transition: all .2s; position: relative;
+}
+.import-zone:hover, .import-zone.drag-over { border-color: var(--primary); background: var(--surface2); }
+.import-zone .import-icon { font-size: 32px; margin-bottom: 6px; }
+.import-zone .import-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.import-zone .import-hint { font-size: 12px; color: var(--text2); margin-top: 3px; }
+#fileInput { display: none; }
+.import-btn { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 600; margin-top: 12px; transition: background .2s, transform .1s; }
+.import-btn:hover { background: var(--primary-light); transform: translateY(-1px); }
+.file-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+.file-tag { background: var(--blue-bg); color: var(--blue-text); border-radius: 20px; padding: 4px 12px; font-size: 11px; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+[data-theme="dark"] .file-tag { background: rgba(59,130,246,.15); color: #93c5fd; }
+.file-tag .remove { cursor: pointer; opacity: .6; font-size: 14px; line-height: 1; transition: opacity .2s; }
+.file-tag .remove:hover { opacity: 1; color: var(--red); }
+
+/* ===================== FILTERS ===================== */
+.filters-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 12px 24px; background: var(--surface); border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border); margin-top: 14px;
+}
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-label { font-size: 11px; color: var(--text2); white-space: nowrap; font-weight: 500; }
+.filter-input {
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+  font-size: 12px; color: var(--text); background: var(--surface2);
+  transition: border-color .2s; outline: none;
+}
+.filter-input:focus { border-color: var(--primary); }
+[data-theme="dark"] .filter-input { color: var(--text); }
+.filter-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+.reset-btn { background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; color: var(--text2); transition: all .2s; }
+.reset-btn:hover { background: var(--surface2); color: var(--text); }
+.active-filter-count { background: var(--accent); color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; display: none; }
+
+/* ===================== KPI CARDS ===================== */
+.section { padding: 16px 24px 0; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi-card {
+  background: var(--surface); border-radius: var(--radius); padding: 18px 20px;
+  box-shadow: var(--shadow); border-left: 4px solid var(--border);
+  position: relative; overflow: hidden; transition: transform .2s, box-shadow .2s;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.kpi-card::after { content:''; position:absolute; right:-20px; top:-20px; width:80px; height:80px; border-radius:50%; opacity:.06; }
+.kpi-card.c-green { border-color: var(--green); } .kpi-card.c-green::after { background: var(--green); }
+.kpi-card.c-red { border-color: var(--red); } .kpi-card.c-red::after { background: var(--red); }
+.kpi-card.c-blue { border-color: var(--blue); } .kpi-card.c-blue::after { background: var(--blue); }
+.kpi-card.c-yellow { border-color: var(--yellow); } .kpi-card.c-yellow::after { background: var(--yellow); }
+.kpi-card.c-purple { border-color: var(--purple); } .kpi-card.c-purple::after { background: var(--purple); }
+.kpi-card.c-teal { border-color: #14b8a6; } .kpi-card.c-teal::after { background: #14b8a6; }
+.kpi-label { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+.kpi-value { font-size: 32px; font-weight: 800; margin: 6px 0 3px; line-height: 1; }
+.kpi-card.c-green .kpi-value { color: var(--green-text); }
+.kpi-card.c-red .kpi-value { color: var(--red-text); }
+.kpi-card.c-blue .kpi-value { color: var(--blue-text); }
+.kpi-card.c-yellow .kpi-value { color: var(--yellow-text); }
+.kpi-card.c-purple .kpi-value { color: var(--purple-text); }
+.kpi-card.c-teal .kpi-value { color: #0f766e; }
+.kpi-sub { font-size: 11px; color: var(--text3); }
+.kpi-trend { position:absolute; top:14px; right:14px; font-size:11px; font-weight:600; padding:2px 7px; border-radius:10px; }
+.trend-up { background:var(--green-bg); color:var(--green-text); }
+.trend-down { background:var(--red-bg); color:var(--red-text); }
+.trend-flat { background:var(--surface2); color:var(--text2); }
+[data-theme="dark"] .trend-up { background:rgba(34,197,94,.15); } [data-theme="dark"] .trend-down { background:rgba(239,68,68,.15); }
+
+/* ===================== INSIGHTS BANNER ===================== */
+.insights-banner {
+  margin: 14px 24px 0; background: linear-gradient(135deg, #0f3460, #1a4a8a);
+  border-radius: var(--radius); padding: 16px 20px; color: #fff; display:none;
+  box-shadow: var(--shadow-md);
+}
+[data-theme="dark"] .insights-banner { background: linear-gradient(135deg, #0d1b2a, #1a3a5c); border: 1px solid #1f4e8c; }
+.insights-banner h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; display:flex; align-items:center; gap:6px; }
+.insights-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:8px; }
+.insight-item { background:rgba(255,255,255,.08); border-radius:8px; padding:9px 12px; font-size:12px; display:flex; align-items:flex-start; gap:8px; }
+.insight-item .icon { font-size:16px; flex-shrink:0; }
+.insight-item p { line-height:1.4; color:rgba(255,255,255,.9); }
+.insight-item strong { color:#fff; }
+
+/* ===================== TABS ===================== */
+.tabs-row { display:flex; gap:0; padding:16px 24px 0; border-bottom: 1px solid var(--border); overflow-x:auto; }
+.tab-btn {
+  padding:9px 18px; font-size:13px; font-weight:500; color:var(--text2);
+  background:transparent; border:none; border-bottom:2px solid transparent;
+  white-space:nowrap; transition:all .2s; margin-bottom:-1px;
+}
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); font-weight:700; }
+[data-theme="dark"] .tab-btn.active { color:#388bfd; border-bottom-color:#388bfd; }
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+
+/* ===================== CHART CARDS ===================== */
+.chart-card {
+  background: var(--surface); border-radius: var(--radius); padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+.card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.card-title { font-size:13px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; }
+.card-action { font-size:11px; color:var(--text2); background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:3px 9px; cursor:pointer; transition:all .2s; }
+.card-action:hover { background:var(--border); }
+.chart-wrap { position:relative; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+.col-span-2 { grid-column: span 2; }
+
+/* ===================== CALENDAR HEATMAP ===================== */
+.cal-grid { display:grid; grid-template-columns: 28px repeat(5, 1fr); gap:3px; align-items:center; margin-top:6px; }
+.cal-dow { font-size:10px; color:var(--text3); text-align:right; padding-right:6px; }
+.cal-cell {
+  aspect-ratio:1; border-radius:4px; cursor:default;
+  display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:600;
+  transition:transform .15s;
+  position:relative;
+}
+.cal-cell:hover { transform:scale(1.3); z-index:2; }
+.cal-cell.empty { background:transparent; }
+.cal-cell .cal-tooltip {
+  display:none; position:absolute; bottom:calc(100% + 4px); left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,.85); color:#fff; padding:5px 8px; border-radius:6px; white-space:nowrap; font-size:10px; z-index:10;
+}
+.cal-cell:hover .cal-tooltip { display:block; }
+
+/* ===================== RANKING TABLE ===================== */
+.rank-table { width:100%; border-collapse:collapse; font-size:12px; }
+.rank-table th { background:var(--surface2); color:var(--text2); font-weight:600; padding:9px 12px; text-align:left; position:sticky; top:0; border-bottom:2px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none; }
+.rank-table th:hover { background:var(--border); }
+.rank-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
+.rank-table tr:hover td { background:var(--surface2); }
+.rank-num { width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; }
+.rank-1 { background:#ffd700; color:#7a5200; }
+.rank-2 { background:#c0c0c0; color:#444; }
+.rank-3 { background:#cd7f32; color:#fff; }
+.rank-n { background:var(--surface2); color:var(--text2); font-size:11px; }
+.badge { display:inline-block; border-radius:20px; padding:2px 9px; font-size:11px; font-weight:600; }
+.badge-ok { background:var(--green-bg); color:var(--green-text); }
+.badge-warn { background:var(--purple-bg); color:var(--purple-text); }
+.badge-fail { background:var(--red-bg); color:var(--red-text); }
+.badge-skip { background:var(--yellow-bg); color:var(--yellow-text); }
+[data-theme="dark"] .badge-ok { background:rgba(34,197,94,.15); color:#86efac; }
+[data-theme="dark"] .badge-warn { background:rgba(139,92,246,.15); color:#c4b5fd; }
+[data-theme="dark"] .badge-fail { background:rgba(239,68,68,.15); color:#fca5a5; }
+[data-theme="dark"] .badge-skip { background:rgba(245,158,11,.15); color:#fcd34d; }
+.pct-bar { display:flex; align-items:center; gap:6px; min-width:120px; }
+.pct-track { flex:1; height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+.pct-fill { height:100%; border-radius:3px; transition:width .5s ease; }
+.table-wrap { overflow:auto; max-height:380px; }
+.sorted-asc::after { content:' ▲'; font-size:9px; }
+.sorted-desc::after { content:' ▼'; font-size:9px; }
+.row-count { font-size:11px; color:var(--text3); font-weight:400; }
+
+/* ===================== WEEKLY VIEW ===================== */
+.week-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px; }
+.week-card { background:var(--surface2); border-radius:var(--radius-sm); padding:12px 14px; border:1px solid var(--border); }
+.week-card h5 { font-size:12px; font-weight:700; color:var(--text); margin-bottom:8px; }
+.week-stat { display:flex; justify-content:space-between; font-size:11px; color:var(--text2); margin-bottom:3px; }
+.week-stat span { font-weight:600; color:var(--text); }
+.week-rate { font-size:22px; font-weight:800; margin:6px 0 2px; }
+
+/* ===================== EXPORT TOOLBAR ===================== */
+.export-bar { display:flex; gap:8px; flex-wrap:wrap; padding:14px 24px 0; }
+.export-btn { display:flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:7px 14px; font-size:12px; color:var(--text); transition:all .2s; font-weight:500; }
+.export-btn:hover { background:var(--surface2); border-color:var(--primary); color:var(--primary); }
+.export-btn .icon { font-size:14px; }
+
+/* ===================== EMPTY STATE ===================== */
+.empty-state { text-align:center; padding:60px 20px; color:var(--text3); }
+.empty-state .icon { font-size:52px; margin-bottom:14px; display:block; }
+.empty-state p { font-size:14px; }
+
+/* ===================== SCROLLBAR ===================== */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text3); }
+
+/* ===================== PRINT STYLES ===================== */
+@media print {
+  .header-btn, .import-section, .filters-bar, .export-bar, .tabs-row, .tab-btn,
+  .file-tag .remove, .reset-btn { display:none !important; }
+  .tab-pane { display:block !important; }
+  .header { position:static; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+  body { background:#fff; }
+  .chart-card, .kpi-card { break-inside:avoid; }
+  @page { margin:15mm; size:A4 landscape; }
+}
+
+/* ===================== LOADING OVERLAY ===================== */
+.loading { display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:9999; align-items:center; justify-content:center; }
+.loading.show { display:flex; }
+.loading-box { background:var(--surface); border-radius:var(--radius); padding:30px 40px; text-align:center; box-shadow:var(--shadow-md); }
+.spinner { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .7s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-text { font-size:13px; color:var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading" id="loading">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">กำลังโหลดข้อมูล...</div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">🛡️</div>
+    <div class="header-title">
+      <h1>Dashboard ตรวจจุด รปภ.</h1>
+      <p id="headerSub">Patrol Checkpoint Statistics</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="file-badge" id="fileBadge">ยังไม่ได้โหลดข้อมูล</div>
+    <div class="header-btn" id="insightsBadge" onclick="scrollToInsights()">⚡ <span id="insightsCount">0</span> ข้อสังเกต</div>
+    <button class="header-btn" onclick="toggleTheme()">🌙 <span id="themeLabel">Dark</span></button>
+    <button class="header-btn" onclick="window.print()">🖨️ Print</button>
+  </div>
+</div>
+
+<!-- IMPORT -->
+<div class="import-section">
+  <div class="import-zone" id="importZone" onclick="document.getElementById('fileInput').click()">
+    <div class="import-icon">📂</div>
+    <div class="import-title">คลิกเพื่อเลือกไฟล์ หรือลากมาวาง</div>
+    <div class="import-hint">รองรับ .xlsx หลายไฟล์ — ข้อมูลจะถูกรวมกันอัตโนมัติ</div>
+    <button class="import-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">+ เพิ่มไฟล์ Excel</button>
+    <div class="file-tags" id="fileTags"></div>
+  </div>
+</div>
+<input type="file" id="fileInput" accept=".xlsx,.xls" multiple>
+
+<!-- FILTERS -->
+<div class="filters-bar">
+  <div class="filter-group">
+    <span class="filter-label">📅 วันที่</span>
+    <input type="date" id="fDateFrom" class="filter-input" onchange="applyFilters()">
+    <span class="filter-label">—</span>
+    <input type="date" id="fDateTo" class="filter-input" onchange="applyFilters()">
+  </div>
+  <div class="filter-sep"></div>
+  <div class="filter-group">
+    <span class="filter-label">👤 รปภ.</span>
+    <select id="fOfficer" class="filter-input" onchange="applyFilters()">
+      <option value="">ทั้งหมด</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">📋 สถานะ</span>
+    <select id="fStatus" class="filter-input" onchange="applyFilters()">
+      <option value="">ทั้งหมด</option>
+      <option value="สำเร็จ">✅ สำเร็จ</option>
+      <option value="ไม่ครบ">⚠️ ไม่ครบ</option>
+      <option value="ไม่ตรวจ">❌ ไม่ตรวจ</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">🏢 บริษัท</span>
+    <select id="fCompany" class="filter-input" onchange="applyFilters()">
+      <option value="">ทั้งหมด</option>
+    </select>
+  </div>
+  <div class="filter-sep"></div>
+  <button class="reset-btn" onclick="resetFilters()">↺ รีเซ็ต</button>
+  <span class="active-filter-count" id="filterCount">0</span>
+</div>
+
+<!-- EXPORT TOOLBAR -->
+<div class="export-bar">
+  <button class="export-btn" onclick="exportExcel()"><span class="icon">📊</span>Export Excel</button>
+  <button class="export-btn" onclick="exportCSV()"><span class="icon">📄</span>Export CSV</button>
+  <button class="export-btn" onclick="window.print()"><span class="icon">🖨️</span>Print / PDF</button>
+  <button class="export-btn" onclick="copyInsights()"><span class="icon">📋</span>Copy สรุป</button>
+</div>
+
+<!-- KPI -->
+<div class="section">
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="empty-state" style="grid-column:1/-1">
+      <span class="icon">📊</span><p>โหลดไฟล์ Excel เพื่อแสดงข้อมูล</p>
+    </div>
+  </div>
+</div>
+
+<!-- INSIGHTS BANNER -->
+<div class="insights-banner" id="insightsBanner">
+  <h4>⚡ ข้อสังเกตอัตโนมัติ</h4>
+  <div class="insights-list" id="insightsList"></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-row">
+  <button class="tab-btn active" onclick="switchTab('overview')">📈 ภาพรวม</button>
+  <button class="tab-btn" onclick="switchTab('daily')">📅 รายวัน</button>
+  <button class="tab-btn" onclick="switchTab('weekly')">📆 รายสัปดาห์</button>
+  <button class="tab-btn" onclick="switchTab('officer')">👤 แยก รปภ.</button>
+  <button class="tab-btn" onclick="switchTab('heatmap')">🗓️ Calendar</button>
+  <button class="tab-btn" onclick="switchTab('detail')">📋 รายละเอียด</button>
+</div>
+
+<!-- TAB: OVERVIEW -->
+<div class="tab-pane active" id="tab-overview">
+  <div class="section">
+    <div class="grid-2">
+      <div class="chart-card col-span-2">
+        <div class="card-header">
+          <div class="card-title">📈 อัตราสำเร็จรายวัน พร้อม Trend Line</div>
+          <select id="chartDailyMode" class="card-action filter-input" onchange="renderOverviewCharts(filteredDetail)">
+            <option value="rate">อัตราสำเร็จ (%)</option>
+            <option value="count">จำนวนรอบ</option>
+          </select>
+        </div>
+        <div class="chart-wrap" style="height:240px"><canvas id="chartDaily"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:12px">
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">📊 สัดส่วนสถานะ</div></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartDonut"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">🕐 รอบตรวจตามชั่วโมง</div></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartHour"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: DAILY -->
+<div class="tab-pane" id="tab-daily">
+  <div class="section">
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">📅 ตารางสรุปรายวัน</div>
+        <span class="row-count" id="dailyCount"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="rank-table" id="dailyTable">
+          <thead><tr>
+            <th onclick="sortTable('daily',0)">วันที่</th>
+            <th onclick="sortTable('daily',1)">วัน</th>
+            <th onclick="sortTable('daily',2)">รอบทั้งหมด</th>
+            <th onclick="sortTable('daily',3)">สำเร็จ</th>
+            <th onclick="sortTable('daily',4)">ไม่ครบ</th>
+            <th onclick="sortTable('daily',5)">ไม่ตรวจ</th>
+            <th onclick="sortTable('daily',6)">ตรงเวลา (จุด)</th>
+            <th onclick="sortTable('daily',7)">เกินเวลา (จุด)</th>
+            <th onclick="sortTable('daily',8)">เฉลี่ย (นาที)</th>
+            <th onclick="sortTable('daily',9)">อัตราสำเร็จ</th>
+          </tr></thead>
+          <tbody id="dailyTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: WEEKLY -->
+<div class="tab-pane" id="tab-weekly">
+  <div class="section">
+    <div class="chart-card" style="margin-bottom:12px">
+      <div class="card-header"><div class="card-title">📆 อัตราสำเร็จรายสัปดาห์</div></div>
+      <div class="chart-wrap" style="height:220px"><canvas id="chartWeekly"></canvas></div>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+</div>
+
+<!-- TAB: OFFICER -->
+<div class="tab-pane" id="tab-officer">
+  <div class="section">
+    <div class="grid-2" style="margin-bottom:12px">
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">🏆 อัตราสำเร็จแยก รปภ.</div></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chartOfficerRate"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">📦 จำนวนรอบแยก รปภ.</div></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chartOfficerCount"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">🏅 การจัดอันดับ รปภ.</div>
+        <span class="row-count" id="officerCount"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="rank-table" id="officerTable">
+          <thead><tr>
+            <th style="width:40px">#</th>
+            <th onclick="sortTable('officer',1)">ชื่อ รปภ.</th>
+            <th onclick="sortTable('officer',2)">รอบทั้งหมด</th>
+            <th onclick="sortTable('officer',3)">สำเร็จ</th>
+            <th onclick="sortTable('officer',4)">ไม่ครบ</th>
+            <th onclick="sortTable('officer',5)">ไม่ตรวจ</th>
+            <th onclick="sortTable('officer',6)">ตรงเวลา (จุด)</th>
+            <th onclick="sortTable('officer',7)">เกินเวลา (จุด)</th>
+            <th onclick="sortTable('officer',8)">เฉลี่ย (นาที)</th>
+            <th onclick="sortTable('officer',9)">อัตราสำเร็จ</th>
+          </tr></thead>
+          <tbody id="officerTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: HEATMAP -->
+<div class="tab-pane" id="tab-heatmap">
+  <div class="section">
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">🗓️ Calendar Heatmap — อัตราสำเร็จรายวัน</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2)">
+          <span>ต่ำ</span>
+          <div style="display:flex;gap:2px">
+            <div style="width:14px;height:14px;border-radius:3px;background:#fee2e2"></div>
+            <div style="width:14px;height:14px;border-radius:3px;background:#fca5a5"></div>
+            <div style="width:14px;height:14px;border-radius:3px;background:#fcd34d"></div>
+            <div style="width:14px;height:14px;border-radius:3px;background:#86efac"></div>
+            <div style="width:14px;height:14px;border-radius:3px;background:#22c55e"></div>
+          </div>
+          <span>สูง</span>
+        </div>
+      </div>
+      <div id="calendarHeatmap"></div>
+    </div>
+    <div class="grid-2" style="margin-top:12px">
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">📆 สรุปตามวันในสัปดาห์</div></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartDow"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">🌙 สรุปตาม Shift (ช่วงเวลา)</div></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartShift"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: DETAIL -->
+<div class="tab-pane" id="tab-detail">
+  <div class="section">
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">📋 รายละเอียดแต่ละรอบ</div>
+        <span class="row-count" id="detailCount"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="rank-table" id="detailTable">
+          <thead><tr>
+            <th onclick="sortTable('detail',0)">วันที่</th>
+            <th onclick="sortTable('detail',1)">รอบ</th>
+            <th onclick="sortTable('detail',2)">ช่วงเวลา</th>
+            <th onclick="sortTable('detail',3)">รปภ.</th>
+            <th onclick="sortTable('detail',4)">ตรวจแล้ว / ทั้งหมด</th>
+            <th onclick="sortTable('detail',5)">ตรงเวลา</th>
+            <th onclick="sortTable('detail',6)">เกินเวลา</th>
+            <th onclick="sortTable('detail',7)">ไม่ตรวจ</th>
+            <th onclick="sortTable('detail',8)">เวลา (นาที)</th>
+            <th onclick="sortTable('detail',9)">สถานะ</th>
+            <th>บริษัท</th>
+          </tr></thead>
+          <tbody id="detailTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:40px"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let allFiles = [];
+let filteredDetail = [];
+let charts = {};
+let sortState = { daily:{col:0,asc:true}, officer:{col:9,asc:false}, detail:{col:0,asc:true} };
+const DAYS_TH = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+// ============================================================
+// THEME
+// ============================================================
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.dataset.theme === 'dark';
+  html.dataset.theme = isDark ? 'light' : 'dark';
+  document.getElementById('themeLabel').textContent = isDark ? 'Dark' : 'Light';
+  localStorage.setItem('theme', html.dataset.theme);
+  if (filteredDetail.length) { destroyCharts(); renderCharts(filteredDetail); }
+}
+(function() {
+  const t = localStorage.getItem('theme');
+  if (t) {
+    document.documentElement.dataset.theme = t;
+    document.getElementById('themeLabel').textContent = t === 'dark' ? 'Light' : 'Dark';
+  }
+})();
+
+// ============================================================
+// FILE HANDLING
+// ============================================================
+document.getElementById('fileInput').addEventListener('change', e => {
+  [...e.target.files].forEach(f => loadFile(f));
+  e.target.value = '';
+});
+const iz = document.getElementById('importZone');
+iz.addEventListener('dragover', e => { e.preventDefault(); iz.classList.add('drag-over'); });
+iz.addEventListener('dragleave', () => iz.classList.remove('drag-over'));
+iz.addEventListener('drop', e => {
+  e.preventDefault(); iz.classList.remove('drag-over');
+  [...e.dataTransfer.files].filter(f => /\.xlsx?$/i.test(f.name)).forEach(f => loadFile(f));
+});
+
+function showLoading(msg) {
+  document.getElementById('loadingText').textContent = msg || 'กำลังโหลดข้อมูล...';
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+
+function loadFile(file) {
+  showLoading('กำลังอ่านไฟล์: ' + file.name);
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const parsed = parseWorkbook(wb, file.name);
+      allFiles = allFiles.filter(f => f.name !== file.name);
+      allFiles.push({ name: file.name, ...parsed });
+      renderFileTags();
+      applyFilters();
+    } catch(err) {
+      alert('ไม่สามารถอ่านไฟล์ได้: ' + file.name + '\n' + err.message);
+    } finally { hideLoading(); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseWorkbook(wb, filename) {
+  let company = filename.replace(/\.xlsx?$/i,'').replace(/^patrol-/i,'').replace(/_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}/, '').trim();
+  const dailySheet = wb.Sheets['สรุปรายวัน'] || wb.Sheets[wb.SheetNames[0]];
+  const detailSheet = wb.Sheets['รายละเอียด'] || wb.Sheets[wb.SheetNames[1] || wb.SheetNames[0]];
+  const dailyRaw = XLSX.utils.sheet_to_json(dailySheet, { header:1, defval:null });
+  let dateRange = '';
+  if (dailyRaw[0]?.[1]) company = String(dailyRaw[0][1]);
+  if (dailyRaw[1]?.[1]) dateRange = String(dailyRaw[1][1]);
+  const detail = [];
+  const detailRaw = XLSX.utils.sheet_to_json(detailSheet, { header:1, defval:null });
+  for (let i = 1; i < detailRaw.length; i++) {
+    const r = detailRaw[i];
+    if (!r?.[0]) continue;
+    detail.push({
+      date: String(r[0]), round: String(r[1]||''), timeRange: String(r[2]||''),
+      officer: String(r[3]||''), checked: +r[4]||0, total: +r[5]||0,
+      onTime: +r[6]||0, late: +r[7]||0, skip: +r[8]||0,
+      duration: +r[9]||0, status: String(r[10]||''), company
+    });
+  }
+  return { company, dateRange, detail };
+}
+
+function removeFile(name) {
+  allFiles = allFiles.filter(f => f.name !== name);
+  renderFileTags();
+  applyFilters();
+}
+
+function renderFileTags() {
+  const c = document.getElementById('fileTags');
+  c.innerHTML = allFiles.map(f =>
+    `<div class="file-tag">📄 ${f.name} <span class="remove" onclick="removeFile('${f.name.replace(/'/g,"\\'")}')">×</span></div>`
+  ).join('');
+  if (allFiles.length) {
+    const companies = [...new Set(allFiles.map(f => f.company))];
+    const totalRows = allFiles.reduce((s,f)=>s+f.detail.length,0);
+    document.getElementById('fileBadge').innerHTML =
+      `<strong>${companies.join(' / ')}</strong> · ${allFiles.length} ไฟล์ · ${totalRows.toLocaleString()} รอบ`;
+    document.getElementById('headerSub').textContent = companies.join(' / ');
+  } else {
+    document.getElementById('fileBadge').textContent = 'ยังไม่ได้โหลดข้อมูล';
+    document.getElementById('headerSub').textContent = 'Patrol Checkpoint Statistics';
+  }
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+function buildFilterOptions() {
+  const all = allFiles.flatMap(f => f.detail);
+  const officerSet = new Set();
+  all.forEach(r => { if (r.officer && r.officer !== 'ยังไม่รปภ.ตรวจ') r.officer.split(/,\s*/).forEach(o => officerSet.add(o.trim())); });
+  const oSel = document.getElementById('fOfficer');
+  const prev = oSel.value;
+  oSel.innerHTML = '<option value="">ทั้งหมด</option>' + [...officerSet].sort().map(o => `<option value="${o}">${o}</option>`).join('');
+  if (prev) oSel.value = prev;
+
+  const cSel = document.getElementById('fCompany');
+  const prevC = cSel.value;
+  cSel.innerHTML = '<option value="">ทั้งหมด</option>' + [...new Set(allFiles.map(f=>f.company))].map(c=>`<option value="${c}">${c}</option>`).join('');
+  if (prevC) cSel.value = prevC;
+
+  const dates = all.map(r=>r.date).filter(Boolean).sort();
+  if (dates.length) {
+    if (!document.getElementById('fDateFrom').value) document.getElementById('fDateFrom').value = thaiToISO(dates[0]);
+    if (!document.getElementById('fDateTo').value) document.getElementById('fDateTo').value = thaiToISO(dates[dates.length-1]);
+  }
+}
+
+function thaiToISO(s) {
+  const m = String(s||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : s||'';
+}
+
+function applyFilters() {
+  if (!allFiles.length) { renderEmpty(); return; }
+  buildFilterOptions();
+  const df = document.getElementById('fDateFrom').value;
+  const dt = document.getElementById('fDateTo').value;
+  const officer = document.getElementById('fOfficer').value;
+  const status = document.getElementById('fStatus').value;
+  const company = document.getElementById('fCompany').value;
+
+  let active = 0;
+  if (df||dt) active++;
+  if (officer) active++;
+  if (status) active++;
+  if (company) active++;
+  const fc = document.getElementById('filterCount');
+  fc.textContent = active; fc.style.display = active ? 'inline' : 'none';
+
+  filteredDetail = allFiles.flatMap(f=>f.detail).filter(r => {
+    if (df && thaiToISO(r.date) < df) return false;
+    if (dt && thaiToISO(r.date) > dt) return false;
+    if (officer && !r.officer.includes(officer)) return false;
+    if (status && r.status !== status) return false;
+    if (company && r.company !== company) return false;
+    return true;
+  });
+
+  renderKPIs(filteredDetail);
+  renderInsights(filteredDetail);
+  renderCharts(filteredDetail);
+  renderDailyTable(filteredDetail);
+  renderWeeklyTab(filteredDetail);
+  renderOfficerTab(filteredDetail);
+  renderCalendarHeatmap(filteredDetail);
+  renderDetailTable(filteredDetail);
+}
+
+function resetFilters() {
+  ['fDateFrom','fDateTo'].forEach(id=>document.getElementById(id).value='');
+  ['fOfficer','fStatus','fCompany'].forEach(id=>document.getElementById(id).value='');
+  applyFilters();
+}
+
+// ============================================================
+// RENDER EMPTY
+// ============================================================
+function renderEmpty() {
+  document.getElementById('kpiGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><span class="icon">📊</span><p>โหลดไฟล์ Excel เพื่อแสดงข้อมูล</p></div>`;
+  document.getElementById('insightsBanner').style.display = 'none';
+  document.getElementById('insightsBadge').style.display = 'none';
+  destroyCharts();
+}
+
+// ============================================================
+// ANIMATED COUNTER
+// ============================================================
+function animateVal(el, target, suffix='', duration=600) {
+  const start = performance.now();
+  const isFloat = String(target).includes('.');
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1-t, 3);
+    const val = target * ease;
+    el.textContent = (isFloat ? val.toFixed(1) : Math.round(val).toLocaleString()) + suffix;
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ============================================================
+// KPI CARDS
+// ============================================================
+function renderKPIs(data) {
+  const total = data.length;
+  const success = data.filter(r=>r.status==='สำเร็จ').length;
+  const fail = data.filter(r=>r.status==='ไม่ครบ').length;
+  const skip = data.filter(r=>r.status==='ไม่ตรวจ').length;
+  const rate = total ? Math.round(success/total*100) : 0;
+  const onTime = data.reduce((s,r)=>s+r.onTime,0);
+  const late = data.reduce((s,r)=>s+r.late,0);
+  const checked = data.reduce((s,r)=>s+r.checked,0);
+  const totalPts = data.reduce((s,r)=>s+r.total,0);
+  const durs = data.filter(r=>r.duration>0).map(r=>r.duration);
+  const avgDur = durs.length ? (durs.reduce((a,b)=>a+b)/durs.length).toFixed(1) : 0;
+  const pctOnTime = (onTime+late) ? Math.round(onTime/(onTime+late)*100) : 0;
+
+  // Trend: compare first half vs second half
+  const sorted = [...data].sort((a,b)=>thaiToISO(a.date).localeCompare(thaiToISO(b.date)));
+  const half = Math.floor(sorted.length/2);
+  const h1 = sorted.slice(0,half); const h2 = sorted.slice(half);
+  const rate1 = h1.length ? h1.filter(r=>r.status==='สำเร็จ').length/h1.length*100 : 0;
+  const rate2 = h2.length ? h2.filter(r=>r.status==='สำเร็จ').length/h2.length*100 : 0;
+  const trendDiff = (rate2 - rate1).toFixed(1);
+  const trendClass = trendDiff > 0 ? 'trend-up' : trendDiff < 0 ? 'trend-down' : 'trend-flat';
+  const trendLabel = trendDiff > 0 ? `▲ ${trendDiff}%` : trendDiff < 0 ? `▼ ${Math.abs(trendDiff)}%` : '→ คงที่';
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card c-blue">
+      <div class="kpi-label">รอบตรวจทั้งหมด</div>
+      <div class="kpi-value" id="kv-total">0</div>
+      <div class="kpi-sub">จุด ${checked.toLocaleString()} / ${totalPts.toLocaleString()}</div>
+    </div>
+    <div class="kpi-card c-green">
+      <div class="kpi-label">อัตราสำเร็จ</div>
+      <div class="kpi-value" id="kv-rate">0%</div>
+      <div class="kpi-trend ${trendClass}">${trendLabel}</div>
+      <div class="kpi-sub">สำเร็จ ${success.toLocaleString()} รอบ</div>
+    </div>
+    <div class="kpi-card c-red">
+      <div class="kpi-label">ไม่ครบ / ไม่ตรวจ</div>
+      <div class="kpi-value" id="kv-fail">0</div>
+      <div class="kpi-sub">ไม่ครบ ${fail.toLocaleString()} · ไม่ตรวจ ${skip.toLocaleString()}</div>
+    </div>
+    <div class="kpi-card c-green">
+      <div class="kpi-label">ตรงเวลา</div>
+      <div class="kpi-value" id="kv-ontime">0</div>
+      <div class="kpi-sub">${pctOnTime}% จากจุดที่ตรวจ · เกินเวลา ${late.toLocaleString()}</div>
+    </div>
+    <div class="kpi-card c-purple">
+      <div class="kpi-label">เฉลี่ยเวลา/รอบ</div>
+      <div class="kpi-value" id="kv-dur">0</div>
+      <div class="kpi-sub">นาที จาก ${durs.length.toLocaleString()} รอบที่มีข้อมูล</div>
+    </div>
+    <div class="kpi-card c-teal">
+      <div class="kpi-label">จำนวน รปภ.</div>
+      <div class="kpi-value" id="kv-off">0</div>
+      <div class="kpi-sub">ที่มีรอบตรวจในช่วงนี้</div>
+    </div>
+  `;
+
+  const officerSet = new Set();
+  data.forEach(r => { if(r.officer && r.officer!=='ยังไม่รปภ.ตรวจ') r.officer.split(/,\s*/).forEach(o=>officerSet.add(o.trim())); });
+
+  animateVal(document.getElementById('kv-total'), total);
+  animateVal(document.getElementById('kv-rate'), rate, '%');
+  animateVal(document.getElementById('kv-fail'), fail+skip);
+  animateVal(document.getElementById('kv-ontime'), onTime);
+  animateVal(document.getElementById('kv-dur'), parseFloat(avgDur));
+  animateVal(document.getElementById('kv-off'), officerSet.size);
+}
+
+// ============================================================
+// INSIGHTS
+// ============================================================
+function renderInsights(data) {
+  const insights = [];
+  if (!data.length) { document.getElementById('insightsBanner').style.display='none'; return; }
+
+  // Best / worst day
+  const byDate = {};
+  data.forEach(r => {
+    if (!byDate[r.date]) byDate[r.date]={total:0,success:0,onTime:0,late:0,durs:[]};
+    byDate[r.date].total++; if(r.status==='สำเร็จ') byDate[r.date].success++;
+    byDate[r.date].onTime+=r.onTime; byDate[r.date].late+=r.late;
+    if(r.duration>0) byDate[r.date].durs.push(r.duration);
+  });
+  const dateArr = Object.entries(byDate).map(([d,v])=>({d,rate:v.total?v.success/v.total*100:0,...v}));
+  if (dateArr.length > 1) {
+    const best = dateArr.reduce((a,b)=>b.rate>a.rate?b:a);
+    const worst = dateArr.reduce((a,b)=>b.rate<a.rate?b:a);
+    insights.push({ icon:'🏆', text:`วันที่ดีที่สุด: <strong>${best.d}</strong> อัตราสำเร็จ <strong>${best.rate.toFixed(0)}%</strong>` });
+    if (worst.rate < 100) insights.push({ icon:'⚠️', text:`วันที่ต่ำสุด: <strong>${worst.d}</strong> อัตราสำเร็จ <strong>${worst.rate.toFixed(0)}%</strong>` });
+  }
+
+  // Officer with most fails
+  const offMap = buildOfficerStats(data);
+  const sorted = [...offMap].sort((a,b)=>b.fail-a.fail);
+  if (sorted[0]?.fail > 0) {
+    insights.push({ icon:'📌', text:`รปภ. ที่มีรอบไม่ครบมากสุด: <strong>${sorted[0].name}</strong> (${sorted[0].fail} รอบ)` });
+  }
+  const topOfficer = [...offMap].sort((a,b)=>b.rate-a.rate).filter(o=>o.total>=3)[0];
+  if (topOfficer) insights.push({ icon:'⭐', text:`รปภ. อัตราสำเร็จสูงสุด: <strong>${topOfficer.name}</strong> (${topOfficer.rate}% จาก ${topOfficer.total} รอบ)` });
+
+  // Late checks
+  const lateTotal = data.reduce((s,r)=>s+r.late,0);
+  const onTimeTotal = data.reduce((s,r)=>s+r.onTime,0);
+  if (lateTotal > 0) insights.push({ icon:'⏰', text:`จุดเกินเวลา: <strong>${lateTotal.toLocaleString()}</strong> จุด (${Math.round(lateTotal/(lateTotal+onTimeTotal)*100)}% ของจุดที่ตรวจ)` });
+
+  // Skip rounds
+  const skipR = data.filter(r=>r.status==='ไม่ตรวจ').length;
+  if (skipR > 0) insights.push({ icon:'❌', text:`รอบที่ไม่มีการตรวจเลย: <strong>${skipR}</strong> รอบ (${Math.round(skipR/data.length*100)}%)` });
+
+  // Best hour
+  const hourBuckets = {};
+  data.forEach(r => {
+    const m = r.round.match(/(\d{2}):\d{2}/);
+    if (m) { const h = +m[1]; if(!hourBuckets[h]) hourBuckets[h]={t:0,s:0}; hourBuckets[h].t++; if(r.status==='สำเร็จ') hourBuckets[h].s++; }
+  });
+  const hourArr = Object.entries(hourBuckets).map(([h,v])=>({h:+h,rate:v.t?v.s/v.t*100:0,t:v.t})).filter(x=>x.t>=3);
+  if (hourArr.length) {
+    const worstH = hourArr.reduce((a,b)=>b.rate<a.rate?b:a);
+    if (worstH.rate < 80) insights.push({ icon:'🕐', text:`ช่วงเวลาที่มีปัญหามากสุด: รอบ <strong>${String(worstH.h).padStart(2,'0')}:00</strong> อัตราสำเร็จ <strong>${worstH.rate.toFixed(0)}%</strong>` });
+  }
+
+  document.getElementById('insightsList').innerHTML = insights.map(i=>
+    `<div class="insight-item"><span class="icon">${i.icon}</span><p>${i.text}</p></div>`
+  ).join('');
+  const banner = document.getElementById('insightsBanner');
+  banner.style.display = insights.length ? 'block' : 'none';
+  const badge = document.getElementById('insightsBadge');
+  badge.style.display = insights.length ? 'flex' : 'none';
+  document.getElementById('insightsCount').textContent = insights.length;
+}
+
+function scrollToInsights() {
+  document.getElementById('insightsBanner').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function destroyCharts() {
+  Object.values(charts).forEach(c => c?.destroy());
+  charts = {};
+}
+
+function gcfg(key, overrides={}) {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const gridColor = dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)';
+  const tickColor = dark ? '#8b949e' : '#94a3b8';
+  const defaults = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:tickColor, font:{size:11} } } },
+    scales:{
+      x:{ grid:{color:gridColor,display:false}, ticks:{color:tickColor,font:{size:9}} },
+      y:{ grid:{color:gridColor}, ticks:{color:tickColor,font:{size:10}} }
+    }
+  };
+  return deepMerge(defaults, overrides);
+}
+
+function deepMerge(target, source) {
+  const result = Object.assign({}, target);
+  for (const key in source) {
+    if (source[key] && typeof source[key]==='object' && !Array.isArray(source[key]))
+      result[key] = deepMerge(target[key]||{}, source[key]);
+    else result[key] = source[key];
+  }
+  return result;
+}
+
+function renderCharts(data) {
+  renderOverviewCharts(data);
+  renderWeeklyChart(data);
+  renderOfficerCharts(data);
+  renderHeatmapCharts(data);
+}
+
+function renderOverviewCharts(data) {
+  ['chartDaily','chartDonut','chartHour'].forEach(id => { if(charts[id]) { charts[id].destroy(); delete charts[id]; } });
+
+  // Daily
+  const mode = document.getElementById('chartDailyMode')?.value || 'rate';
+  const byDate = {};
+  data.forEach(r => {
+    if (!byDate[r.date]) byDate[r.date]={total:0,success:0,fail:0,skip:0};
+    byDate[r.date].total++; byDate[r.date][r.status==='สำเร็จ'?'success':r.status==='ไม่ครบ'?'fail':'skip']++;
+  });
+  const dates = Object.keys(byDate).sort((a,b)=>thaiToISO(a).localeCompare(thaiToISO(b)));
+  const rates = dates.map(d => byDate[d].total ? Math.round(byDate[d].success/byDate[d].total*100) : 0);
+
+  // Moving average
+  const ma7 = rates.map((_,i) => {
+    const slice = rates.slice(Math.max(0,i-3), i+4);
+    return Math.round(slice.reduce((a,b)=>a+b)/slice.length);
+  });
+
+  const ctx1 = document.getElementById('chartDaily')?.getContext('2d');
+  if (ctx1) {
+    const barData = mode === 'rate' ? rates : dates.map(d=>byDate[d].total);
+    const barColors = mode === 'rate' ? rates.map(r=>r>=90?'#22c55e':r>=70?'#f59e0b':'#ef4444') : '#3b82f6';
+    charts.chartDaily = new Chart(ctx1, {
+      data: {
+        labels: dates.map(d=>d.replace('/2026','')),
+        datasets: [
+          { type:'bar', label: mode==='rate'?'อัตราสำเร็จ (%)':'จำนวนรอบ', data:barData, backgroundColor:barColors, borderRadius:4, yAxisID:'y' },
+          ...(mode==='rate' ? [{ type:'line', label:'MA (7 วัน)', data:ma7, borderColor:'#0f3460', borderWidth:2, pointRadius:0, tension:.4, yAxisID:'y' }] : [])
+        ]
+      },
+      options: gcfg('daily', {
+        plugins:{ legend:{ labels:{font:{size:11}} } },
+        scales:{
+          y:{ min:0, max:mode==='rate'?100:undefined, ticks:{callback:v=>mode==='rate'?v+'%':v} },
+          x:{ ticks:{maxRotation:45} }
+        }
+      })
+    });
+  }
+
+  // Donut
+  const ctx2 = document.getElementById('chartDonut')?.getContext('2d');
+  if (ctx2) {
+    const sc = data.filter(r=>r.status==='สำเร็จ').length;
+    const fc = data.filter(r=>r.status==='ไม่ครบ').length;
+    const sk = data.filter(r=>r.status==='ไม่ตรวจ').length;
+    charts.chartDonut = new Chart(ctx2, {
+      type:'doughnut',
+      data:{ labels:['สำเร็จ','ไม่ครบ','ไม่ตรวจ'], datasets:[{ data:[sc,fc,sk], backgroundColor:['#22c55e','#8b5cf6','#ef4444'], borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
+        plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:10, color: document.documentElement.dataset.theme==='dark'?'#8b949e':'#64748b' } } }
+      }
+    });
+  }
+
+  // Hourly
+  const hourBuckets = Array(24).fill(0).map(()=>({s:0,f:0,sk:0}));
+  data.forEach(r => {
+    const m = r.round.match(/(\d{2}):\d{2}/);
+    if (m) { const h=+m[1]; hourBuckets[h][r.status==='สำเร็จ'?'s':r.status==='ไม่ครบ'?'f':'sk']++; }
+  });
+  const ctx3 = document.getElementById('chartHour')?.getContext('2d');
+  const dark = document.documentElement.dataset.theme==='dark';
+  if (ctx3) {
+    charts.chartHour = new Chart(ctx3, {
+      type:'bar',
+      data:{
+        labels: Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00'),
+        datasets:[
+          { label:'สำเร็จ', data:hourBuckets.map(h=>h.s), backgroundColor:'#22c55e', borderRadius:3, stack:'s' },
+          { label:'ไม่ครบ', data:hourBuckets.map(h=>h.f), backgroundColor:'#8b5cf6', borderRadius:3, stack:'s' },
+          { label:'ไม่ตรวจ', data:hourBuckets.map(h=>h.sk), backgroundColor:'#ef4444', borderRadius:3, stack:'s' }
+        ]
+      },
+      options: gcfg('hour', { scales:{ x:{stacked:true,ticks:{maxRotation:45}}, y:{stacked:true} }, plugins:{ legend:{labels:{font:{size:10}}} } })
+    });
+  }
+}
+
+function renderWeeklyChart(data) {
+  ['chartWeekly'].forEach(id=>{ if(charts[id]){charts[id].destroy();delete charts[id];} });
+  const weekMap = {};
+  data.forEach(r => {
+    const iso = thaiToISO(r.date);
+    if (!iso) return;
+    const d = new Date(iso);
+    const dayOfWeek = d.getDay();
+    const monday = new Date(d); monday.setDate(d.getDate() - ((dayOfWeek+6)%7));
+    const wk = monday.toISOString().slice(0,10);
+    if (!weekMap[wk]) weekMap[wk]={total:0,success:0};
+    weekMap[wk].total++; if(r.status==='สำเร็จ') weekMap[wk].success++;
+  });
+  const weeks = Object.keys(weekMap).sort();
+  const ctx = document.getElementById('chartWeekly')?.getContext('2d');
+  if (ctx) {
+    charts.chartWeekly = new Chart(ctx, {
+      data:{
+        labels: weeks.map(w => { const d=new Date(w); return `สัปดาห์ ${d.getDate()}/${d.getMonth()+1}`; }),
+        datasets:[
+          { type:'bar', label:'รอบทั้งหมด', data:weeks.map(w=>weekMap[w].total), backgroundColor:'rgba(59,130,246,.4)', borderRadius:4, yAxisID:'y2' },
+          { type:'line', label:'อัตราสำเร็จ (%)', data:weeks.map(w=>weekMap[w].total?Math.round(weekMap[w].success/weekMap[w].total*100):0), borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.1)', borderWidth:2.5, fill:true, tension:.4, yAxisID:'y', pointRadius:5, pointBackgroundColor:'#22c55e' }
+        ]
+      },
+      options: gcfg('weekly', {
+        scales:{
+          y:{ min:0, max:100, position:'right', ticks:{callback:v=>v+'%'} },
+          y2:{ position:'left', grid:{display:false} }
+        },
+        plugins:{ legend:{labels:{font:{size:11}}} }
+      })
+    });
+  }
+}
+
+function renderOfficerCharts(data) {
+  ['chartOfficerRate','chartOfficerCount'].forEach(id=>{ if(charts[id]){charts[id].destroy();delete charts[id];} });
+  const stats = buildOfficerStats(data).filter(o=>o.name!=='(ว่าง)').sort((a,b)=>b.rate-a.rate).slice(0,12);
+  const names = stats.map(o=>o.name.replace('นาย','').replace('นาง','').trim());
+
+  const ctx1 = document.getElementById('chartOfficerRate')?.getContext('2d');
+  if (ctx1) {
+    charts.chartOfficerRate = new Chart(ctx1, {
+      type:'bar',
+      data:{ labels:names, datasets:[{ label:'อัตราสำเร็จ (%)', data:stats.map(o=>o.rate), backgroundColor:stats.map(o=>o.rate>=90?'#22c55e':o.rate>=70?'#f59e0b':'#ef4444'), borderRadius:4 }] },
+      options: gcfg('oRate', { indexAxis:'y', scales:{ x:{min:0,max:100,ticks:{callback:v=>v+'%'}}, y:{grid:{display:false}} }, plugins:{legend:{display:false}} })
+    });
+  }
+  const ctx2 = document.getElementById('chartOfficerCount')?.getContext('2d');
+  if (ctx2) {
+    const byCount = buildOfficerStats(data).filter(o=>o.name!=='(ว่าง)').sort((a,b)=>b.total-a.total).slice(0,12);
+    charts.chartOfficerCount = new Chart(ctx2, {
+      type:'bar',
+      data:{ labels:byCount.map(o=>o.name.replace('นาย','').replace('นาง','').trim()),
+        datasets:[
+          { label:'สำเร็จ', data:byCount.map(o=>o.success), backgroundColor:'#22c55e', borderRadius:3, stack:'s' },
+          { label:'ไม่ครบ', data:byCount.map(o=>o.fail), backgroundColor:'#8b5cf6', borderRadius:3, stack:'s' },
+          { label:'ไม่ตรวจ', data:byCount.map(o=>o.skip), backgroundColor:'#ef4444', borderRadius:3, stack:'s' }
+        ]
+      },
+      options: gcfg('oCount', { indexAxis:'y', scales:{ x:{stacked:true}, y:{stacked:true,grid:{display:false}} } })
+    });
+  }
+}
+
+function renderHeatmapCharts(data) {
+  ['chartDow','chartShift'].forEach(id=>{ if(charts[id]){charts[id].destroy();delete charts[id];} });
+
+  // Day of week
+  const dowBuckets = Array(7).fill(0).map(()=>({t:0,s:0}));
+  data.forEach(r => {
+    const iso = thaiToISO(r.date);
+    if (!iso) return;
+    const d = new Date(iso).getDay();
+    dowBuckets[d].t++; if(r.status==='สำเร็จ') dowBuckets[d].s++;
+  });
+  const ctx1 = document.getElementById('chartDow')?.getContext('2d');
+  if (ctx1) {
+    charts.chartDow = new Chart(ctx1, {
+      type:'bar',
+      data:{ labels:['อา','จ','อ','พ','พฤ','ศ','ส'], datasets:[{ label:'อัตราสำเร็จ (%)', data:dowBuckets.map(b=>b.t?Math.round(b.s/b.t*100):0), backgroundColor:['#ef4444','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#22c55e'], borderRadius:5 }] },
+      options: gcfg('dow', { plugins:{legend:{display:false}}, scales:{ y:{min:0,max:100,ticks:{callback:v=>v+'%'}}, x:{grid:{display:false}} } })
+    });
+  }
+
+  // Shift
+  const shifts = {'กลางคืน (00-06)':0,'เช้า (06-12)':0,'บ่าย (12-18)':0,'ดึก (18-24)':0};
+  const shiftS = {...shifts};
+  data.forEach(r => {
+    const m = r.round.match(/(\d{2}):\d{2}/);
+    if (!m) return;
+    const h = +m[1];
+    const key = h<6?'กลางคืน (00-06)':h<12?'เช้า (06-12)':h<18?'บ่าย (12-18)':'ดึก (18-24)';
+    shifts[key]++; if(r.status==='สำเร็จ') shiftS[key]++;
+  });
+  const ctx2 = document.getElementById('chartShift')?.getContext('2d');
+  if (ctx2) {
+    const labels = Object.keys(shifts);
+    charts.chartShift = new Chart(ctx2, {
+      type:'doughnut',
+      data:{ labels, datasets:[{ data:labels.map(k=>shifts[k]), backgroundColor:['#1e3a5f','#3b82f6','#f59e0b','#64748b'], borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
+        plugins:{ legend:{ position:'right', labels:{ font:{size:10}, color: document.documentElement.dataset.theme==='dark'?'#8b949e':'#64748b', padding:8 } } }
+      }
+    });
+  }
+}
+
+// ============================================================
+// CALENDAR HEATMAP
+// ============================================================
+function renderCalendarHeatmap(data) {
+  const byDate = {};
+  data.forEach(r => {
+    if (!byDate[r.date]) byDate[r.date]={total:0,success:0};
+    byDate[r.date].total++; if(r.status==='สำเร็จ') byDate[r.date].success++;
+  });
+
+  const dates = Object.keys(byDate).map(d=>thaiToISO(d)).filter(Boolean).sort();
+  if (!dates.length) { document.getElementById('calendarHeatmap').innerHTML='<p style="color:var(--text3);padding:20px;text-align:center">ไม่มีข้อมูล</p>'; return; }
+
+  const minDate = new Date(dates[0]); const maxDate = new Date(dates[dates.length-1]);
+  const thaiDateMap = {};
+  Object.entries(byDate).forEach(([thai,v])=>{ thaiDateMap[thaiToISO(thai)] = v; });
+
+  // Build month groups
+  let html = '';
+  let cur = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+  while (cur <= maxDate) {
+    const year = cur.getFullYear(); const month = cur.getMonth();
+    const monthName = cur.toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+    html += `<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">${monthName}</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;max-width:280px">`;
+    ['อา','จ','อ','พ','พฤ','ศ','ส'].forEach(d => html+=`<div style="font-size:9px;color:var(--text3);text-align:center;padding-bottom:3px">${d}</div>`);
+    // empty cells
+    const firstDay = new Date(year, month, 1).getDay();
+    for (let i=0; i<firstDay; i++) html += `<div></div>`;
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    for (let day=1; day<=daysInMonth; day++) {
+      const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const v = thaiDateMap[iso];
+      if (!v) { html+=`<div style="aspect-ratio:1;border-radius:4px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3)">${day}</div>`; continue; }
+      const rate = v.total ? v.success/v.total*100 : 0;
+      const bg = rate>=95?'#16a34a':rate>=80?'#86efac':rate>=60?'#fcd34d':rate>=40?'#fca5a5':'#ef4444';
+      const tc = rate>=80?'#fff':rate>=60?'#78350f':'#fff';
+      html += `<div class="cal-cell" style="aspect-ratio:1;border-radius:4px;background:${bg};color:${tc};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:default;transition:transform .15s;position:relative" title="${iso}: ${v.success}/${v.total} รอบ (${rate.toFixed(0)}%)">${day}<div class="cal-tooltip">${iso}<br>สำเร็จ ${v.success}/${v.total} (${rate.toFixed(0)}%)</div></div>`;
+    }
+    html += '</div></div>';
+    cur = new Date(year, month+1, 1);
+  }
+  document.getElementById('calendarHeatmap').innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:20px;padding-top:8px">${html}</div>`;
+}
+
+// ============================================================
+// DAILY TABLE
+// ============================================================
+function renderDailyTable(data) {
+  const byDate = {};
+  data.forEach(r => {
+    if (!byDate[r.date]) byDate[r.date]={total:0,s:0,f:0,sk:0,onTime:0,late:0,durs:[]};
+    const d = byDate[r.date];
+    d.total++; if(r.status==='สำเร็จ') d.s++; else if(r.status==='ไม่ครบ') d.f++; else d.sk++;
+    d.onTime+=r.onTime; d.late+=r.late;
+    if(r.duration>0) d.durs.push(r.duration);
+  });
+  const DOW = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const rows = Object.entries(byDate).sort((a,b)=>thaiToISO(a[0]).localeCompare(thaiToISO(b[0]))).map(([d,v])=>{
+    const rate = v.total ? Math.round(v.s/v.total*100) : 0;
+    const avg = v.durs.length ? Math.round(v.durs.reduce((a,b)=>a+b)/v.durs.length) : 0;
+    const dow = DOW[new Date(thaiToISO(d)).getDay()]||'';
+    const fc = rate>=90?'#22c55e':rate>=70?'#f59e0b':'#ef4444';
+    return [d, dow, v.total, v.s, v.f, v.sk, v.onTime, v.late, avg, rate];
+  });
+
+  const st = sortState.daily;
+  rows.sort((a,b) => {
+    let va=a[st.col], vb=b[st.col];
+    if (st.col===0) { va=thaiToISO(va); vb=thaiToISO(vb); }
+    return st.asc ? (typeof va==='number'?va-vb:String(va).localeCompare(String(vb))) : (typeof vb==='number'?vb-va:String(vb).localeCompare(String(va)));
+  });
+  updateSortHeaders('dailyTable', st.col, st.asc);
+  document.getElementById('dailyCount').textContent = `${rows.length} วัน`;
+  document.getElementById('dailyTbody').innerHTML = rows.map(r => {
+    const rate=r[9]; const fc=rate>=90?'#22c55e':rate>=70?'#f59e0b':'#ef4444';
+    return `<tr>
+      <td><strong>${r[0]}</strong></td>
+      <td style="color:var(--text2)">${r[1]}</td>
+      <td>${r[2]}</td>
+      <td style="color:#16a34a;font-weight:600">${r[3]}</td>
+      <td style="color:#7c3aed">${r[4]||'-'}</td>
+      <td style="color:#dc2626">${r[5]||'-'}</td>
+      <td style="color:#16a34a">${r[6].toLocaleString()}</td>
+      <td style="color:${r[7]>0?'#d97706':'var(--text3)'}">${r[7]||'-'}</td>
+      <td>${r[8]||'-'}</td>
+      <td><div class="pct-bar"><strong style="color:${fc};min-width:36px">${rate}%</strong><div class="pct-track"><div class="pct-fill" style="width:${rate}%;background:${fc}"></div></div></div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// WEEKLY TAB
+// ============================================================
+function renderWeeklyTab(data) {
+  renderWeeklyChart(data);
+  const weekMap = {};
+  data.forEach(r => {
+    const iso = thaiToISO(r.date); if(!iso) return;
+    const d = new Date(iso); const dow = d.getDay();
+    const mon = new Date(d); mon.setDate(d.getDate()-((dow+6)%7));
+    const wk = mon.toISOString().slice(0,10);
+    if(!weekMap[wk]) weekMap[wk]={total:0,s:0,f:0,sk:0,onTime:0,late:0,dates:new Set()};
+    const w = weekMap[wk];
+    w.total++; w.dates.add(r.date);
+    if(r.status==='สำเร็จ') w.s++; else if(r.status==='ไม่ครบ') w.f++; else w.sk++;
+    w.onTime+=r.onTime; w.late+=r.late;
+  });
+  const weeks = Object.keys(weekMap).sort();
+  document.getElementById('weekGrid').innerHTML = weeks.map((wk,i) => {
+    const v = weekMap[wk]; const rate = v.total ? Math.round(v.s/v.total*100) : 0;
+    const d = new Date(wk); const d2 = new Date(wk); d2.setDate(d.getDate()+6);
+    const fc = rate>=90?'#16a34a':rate>=70?'#d97706':'#dc2626';
+    return `<div class="week-card">
+      <h5>สัปดาห์ที่ ${i+1} (${d.getDate()}/${d.getMonth()+1} – ${d2.getDate()}/${d2.getMonth()+1})</h5>
+      <div class="week-rate" style="color:${fc}">${rate}%</div>
+      <div class="week-stat">รอบทั้งหมด <span>${v.total}</span></div>
+      <div class="week-stat">สำเร็จ <span style="color:#16a34a">${v.s}</span></div>
+      <div class="week-stat">ไม่ครบ / ไม่ตรวจ <span style="color:#dc2626">${v.f+v.sk}</span></div>
+      <div class="week-stat">ตรงเวลา <span>${v.onTime.toLocaleString()} จุด</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// OFFICER TAB
+// ============================================================
+function buildOfficerStats(data) {
+  const map = {};
+  data.forEach(r => {
+    const names = r.officer==='ยังไม่รปภ.ตรวจ' ? ['(ว่าง)'] : r.officer.split(/,\s*/);
+    names.forEach(name => {
+      name = name.trim(); if(!name) return;
+      if(!map[name]) map[name]={name,total:0,success:0,fail:0,skip:0,onTime:0,late:0,durs:[]};
+      const o=map[name]; o.total++;
+      if(r.status==='สำเร็จ') o.success++; else if(r.status==='ไม่ครบ') o.fail++; else o.skip++;
+      o.onTime+=r.onTime; o.late+=r.late;
+      if(r.duration>0) o.durs.push(r.duration);
+    });
+  });
+  return Object.values(map).map(o=>({...o, rate:o.total?Math.round(o.success/o.total*100):0, avgDur:o.durs.length?Math.round(o.durs.reduce((a,b)=>a+b)/o.durs.length):0}));
+}
+
+function renderOfficerTab(data) {
+  renderOfficerCharts(data);
+  const stats = buildOfficerStats(data);
+  const st = sortState.officer;
+  const keys = ['name','name','total','success','fail','skip','onTime','late','avgDur','rate'];
+  const sorted = [...stats].sort((a,b)=>{
+    const va=a[keys[st.col]],vb=b[keys[st.col]];
+    return st.asc?(typeof va==='number'?va-vb:String(va).localeCompare(String(vb))):(typeof vb==='number'?vb-va:String(vb).localeCompare(String(va)));
+  });
+  updateSortHeaders('officerTable', st.col, st.asc);
+  document.getElementById('officerCount').textContent = `${sorted.filter(o=>o.name!=='(ว่าง)').length} คน`;
+
+  // Rank by total for medal
+  const byTotal = [...stats].filter(o=>o.name!=='(ว่าง)').sort((a,b)=>b.total-a.total);
+  const rankMap = {}; byTotal.forEach((o,i)=>rankMap[o.name]=i+1);
+
+  document.getElementById('officerTbody').innerHTML = sorted.map(o => {
+    const rank = rankMap[o.name]||99; const rk = rank<=3?`rank-${rank}`:'rank-n';
+    const rc = o.rate>=90?'#16a34a':o.rate>=70?'#d97706':'#dc2626';
+    const fc = o.rate>=90?'#22c55e':o.rate>=70?'#f59e0b':'#ef4444';
+    return `<tr>
+      <td><span class="rank-num ${rk}">${rank<=3?['🥇','🥈','🥉'][rank-1]:rank}</span></td>
+      <td><strong>${o.name}</strong></td>
+      <td>${o.total}</td>
+      <td style="color:#16a34a;font-weight:600">${o.success}</td>
+      <td><span class="${o.fail>0?'badge badge-warn':''}">${o.fail||'-'}</span></td>
+      <td><span class="${o.skip>0?'badge badge-fail':''}">${o.skip||'-'}</span></td>
+      <td style="color:#16a34a">${o.onTime.toLocaleString()}</td>
+      <td style="color:${o.late>0?'#d97706':'var(--text3)'}">${o.late||'-'}</td>
+      <td>${o.avgDur||'-'}</td>
+      <td><div class="pct-bar"><strong style="color:${rc};min-width:36px">${o.rate}%</strong><div class="pct-track"><div class="pct-fill" style="width:${o.rate}%;background:${fc}"></div></div></div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// DETAIL TABLE
+// ============================================================
+function renderDetailTable(data) {
+  const st = sortState.detail;
+  const keys = ['date','round','timeRange','officer','checked','onTime','late','skip','duration','status'];
+  const sorted = [...data].sort((a,b)=>{
+    let va=a[keys[st.col]],vb=b[keys[st.col]];
+    if(st.col===0){va=thaiToISO(va);vb=thaiToISO(vb);}
+    return st.asc?(typeof va==='number'?va-vb:String(va).localeCompare(String(vb))):(typeof vb==='number'?vb-va:String(vb).localeCompare(String(va)));
+  });
+  updateSortHeaders('detailTable', st.col, st.asc);
+  document.getElementById('detailCount').textContent = `${sorted.length.toLocaleString()} รายการ`;
+  const LIMIT = 500;
+  const rows = sorted.slice(0,LIMIT).map(r => {
+    const pct = r.total ? Math.round(r.checked/r.total*100) : 0;
+    const pfc = pct>=100?'#22c55e':pct>=70?'#f59e0b':'#ef4444';
+    const badge = r.status==='สำเร็จ'?'badge-ok':r.status==='ไม่ครบ'?'badge-warn':'badge-fail';
+    const label = r.status==='สำเร็จ'?'✅ สำเร็จ':r.status==='ไม่ครบ'?'⚠️ ไม่ครบ':'❌ ไม่ตรวจ';
+    return `<tr>
+      <td>${r.date}</td><td style="white-space:nowrap">${r.round}</td>
+      <td style="font-size:11px;color:var(--text2)">${r.timeRange}</td>
+      <td>${r.officer}</td>
+      <td><div class="pct-bar"><span>${r.checked}/${r.total}</span><div class="pct-track"><div class="pct-fill" style="width:${pct}%;background:${pfc}"></div></div><span style="font-size:10px;color:var(--text3)">${pct}%</span></div></td>
+      <td style="color:#16a34a">${r.onTime}</td>
+      <td style="color:${r.late>0?'#d97706':'var(--text3)'}">${r.late||'-'}</td>
+      <td style="color:${r.skip>0?'#dc2626':'var(--text3)'}">${r.skip||'-'}</td>
+      <td>${r.duration||'-'}</td>
+      <td><span class="badge ${badge}">${label}</span></td>
+      <td style="font-size:11px;color:var(--text3);max-width:160px;overflow:hidden;text-overflow:ellipsis">${r.company}</td>
+    </tr>`;
+  });
+  if (sorted.length > LIMIT) rows.push(`<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:10px">แสดง ${LIMIT.toLocaleString()} รายการแรก จาก ${sorted.length.toLocaleString()}</td></tr>`);
+  document.getElementById('detailTbody').innerHTML = rows.join('');
+}
+
+// ============================================================
+// SORT HELPERS
+// ============================================================
+function sortTable(type, col) {
+  const st = sortState[type];
+  if (st.col === col) st.asc = !st.asc; else { st.col = col; st.asc = true; }
+  if (type==='daily') renderDailyTable(filteredDetail);
+  else if (type==='officer') renderOfficerTab(filteredDetail);
+  else if (type==='detail') renderDetailTable(filteredDetail);
+}
+
+function updateSortHeaders(tableId, col, asc) {
+  document.querySelectorAll(`#${tableId} th`).forEach((th,i) => {
+    th.classList.remove('sorted-asc','sorted-desc');
+    if (i===col) th.classList.add(asc?'sorted-asc':'sorted-desc');
+  });
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    const names=['overview','daily','weekly','officer','heatmap','detail'];
+    b.classList.toggle('active', names[i]===name);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  // Lazy render charts in newly visible tab
+  if (filteredDetail.length) {
+    if (name==='weekly') renderWeeklyChart(filteredDetail);
+    if (name==='officer') renderOfficerCharts(filteredDetail);
+    if (name==='heatmap') renderHeatmapCharts(filteredDetail);
+  }
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportExcel() {
+  if (!filteredDetail.length) { alert('ไม่มีข้อมูล'); return; }
+  const wb = XLSX.utils.book_new();
+  // Detail sheet
+  const detailData = [['วันที่','รอบ','ช่วงเวลา','รปภ.','ตรวจแล้ว','ทั้งหมด','ตรงเวลา','เกินเวลา','ไม่ตรวจ','เวลา(นาที)','สถานะ','บริษัท'],
+    ...filteredDetail.map(r=>[r.date,r.round,r.timeRange,r.officer,r.checked,r.total,r.onTime,r.late,r.skip,r.duration,r.status,r.company])
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailData), 'รายละเอียด');
+  // Officer summary
+  const stats = buildOfficerStats(filteredDetail);
+  const officerData = [['รปภ.','รอบทั้งหมด','สำเร็จ','ไม่ครบ','ไม่ตรวจ','ตรงเวลา','เกินเวลา','เฉลี่ย(นาที)','อัตราสำเร็จ%'],
+    ...stats.map(o=>[o.name,o.total,o.success,o.fail,o.skip,o.onTime,o.late,o.avgDur,o.rate])
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(officerData), 'สรุปรปภ.');
+  const now = new Date(); const fname = `patrol-export-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+function exportCSV() {
+  if (!filteredDetail.length) { alert('ไม่มีข้อมูล'); return; }
+  const headers = 'วันที่,รอบ,ช่วงเวลา,รปภ.,ตรวจแล้ว,ทั้งหมด,ตรงเวลา,เกินเวลา,ไม่ตรวจ,เวลา(นาที),สถานะ,บริษัท\n';
+  const rows = filteredDetail.map(r=>[r.date,r.round,r.timeRange,r.officer,r.checked,r.total,r.onTime,r.late,r.skip,r.duration,r.status,r.company].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+headers+rows], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`patrol-export-${Date.now()}.csv`; a.click();
+}
+
+function copyInsights() {
+  const insightsEls = document.querySelectorAll('#insightsList .insight-item p');
+  if (!insightsEls.length) { alert('ไม่มีข้อสังเกต — โหลดข้อมูลก่อน'); return; }
+  const text = [...insightsEls].map(el=>el.innerText).join('\n');
+  const total = filteredDetail.length;
+  const rate = total ? Math.round(filteredDetail.filter(r=>r.status==='สำเร็จ').length/total*100) : 0;
+  const full = `📊 สรุปผลตรวจจุด รปภ.\n🔢 รอบทั้งหมด: ${total.toLocaleString()} รอบ | อัตราสำเร็จ: ${rate}%\n\n⚡ ข้อสังเกต:\n${text}`;
+  navigator.clipboard.writeText(full).then(()=>alert('คัดลอกสรุปแล้ว ✓')).catch(()=>alert('ไม่สามารถคัดลอกได้ กรุณาลองใหม่'));
+}
+</script>
+</body>
+</html>
