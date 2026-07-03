@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard ตรวจจุด รปภ. — Live</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root {
+  --bg:#f0f2f5;--surface:#fff;--surface2:#f8fafc;--border:#e2e8f0;
+  --text:#1a202c;--text2:#64748b;--text3:#94a3b8;
+  --primary:#0f3460;--primary-light:#1a4a8a;--accent:#e94560;
+  --green:#22c55e;--green-bg:#dcfce7;--green-text:#16a34a;
+  --red:#ef4444;--red-bg:#fee2e2;--red-text:#dc2626;
+  --yellow:#f59e0b;--yellow-bg:#fef3c7;--yellow-text:#92400e;
+  --purple:#8b5cf6;--purple-bg:#ede9fe;--purple-text:#6d28d9;
+  --blue:#3b82f6;--blue-bg:#dbeafe;--blue-text:#1d4ed8;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);
+  --radius:12px;--radius-sm:8px;
+}
+[data-theme="dark"]{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;
+  --text:#e6edf3;--text2:#8b949e;--text3:#484f58;
+  --primary:#1f6feb;--primary-light:#388bfd;
+  --shadow:0 1px 3px rgba(0,0,0,.4);--shadow-md:0 4px 6px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI','Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;transition:background .3s,color .3s;}
+button,select,input{font-family:inherit;cursor:pointer;}
+
+/* ── MODAL BASE ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--surface);border-radius:16px;padding:32px;max-width:480px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:6px;color:var(--text);}
+.modal-sub{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6;}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+.form-input{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text);background:var(--surface2);outline:none;transition:border .2s;margin-bottom:16px;}
+.form-input:focus{border-color:var(--primary);}
+.form-hint{font-size:11px;color:var(--text3);margin-top:-12px;margin-bottom:14px;line-height:1.5;}
+.btn-primary{width:100%;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;transition:background .2s;}
+.btn-primary:hover{background:var(--primary-light);}
+.btn-link{background:none;border:none;color:var(--text2);font-size:12px;text-decoration:underline;margin-top:10px;display:block;text-align:center;}
+.modal-error{background:var(--red-bg);color:var(--red-text);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px;display:none;}
+
+/* ── HEADER ── */
+.header{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#0f3460,#16213e,#0a0a2e);color:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-shadow:0 2px 16px rgba(0,0,0,.3);}
+[data-theme="dark"] .header{background:linear-gradient(135deg,#010409,#0d1117);border-bottom:1px solid var(--border);}
+.header-left{display:flex;align-items:center;gap:12px;}
+.header-logo{width:36px;height:36px;background:rgba(255,255,255,.12);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.header-title h1{font-size:15px;font-weight:700;}
+.header-title p{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.hbtn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:7px;color:#fff;padding:5px 11px;font-size:12px;display:flex;align-items:center;gap:5px;transition:background .2s;white-space:nowrap;}
+.hbtn:hover{background:rgba(255,255,255,.2);}
+
+/* ── REAL-TIME STATUS ── */
+.rt-badge{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px 11px;font-size:12px;color:rgba(255,255,255,.7);}
+.rt-dot{width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;transition:background .3s;}
+.rt-dot.connected{background:#22c55e;animation:pulse 2s infinite;}
+.rt-dot.error{background:#ef4444;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.rt-text{}
+
+/* ── UPLOAD PROGRESS ── */
+.upload-progress{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin:14px 20px 0;display:none;}
+.upload-progress.show{display:block;}
+.up-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;}
+.up-bar-track{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:6px;}
+.up-bar-fill{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border-radius:4px;transition:width .3s;width:0%;}
+.up-text{font-size:11px;color:var(--text3);}
+
+/* ── UPLOAD PANEL (slide-down) ── */
+.upload-panel{background:var(--surface);border-bottom:2px solid var(--border);overflow:hidden;max-height:0;transition:max-height .3s ease,padding .3s;}
+.upload-panel.open{max-height:200px;}
+.upload-panel-inner{padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.upload-drop{flex:1;min-width:220px;border:2px dashed var(--border);border-radius:var(--radius-sm);padding:14px 16px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2);}
+.upload-drop:hover,.upload-drop.drag-over{border-color:var(--primary);background:var(--blue-bg);}
+[data-theme="dark"] .upload-drop:hover{background:rgba(59,130,246,.1);}
+.upload-drop p{font-size:12px;color:var(--text2);margin-top:4px;}
+.upload-controls{display:flex;flex-direction:column;gap:8px;min-width:180px;}
+.import-name-input{border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;background:var(--surface2);color:var(--text);width:100%;outline:none;}
+.import-name-input:focus{border-color:var(--primary);}
+.import-btn{background:var(--primary);color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:600;transition:all .2s;text-align:center;}
+.import-btn:hover{background:var(--primary-light);}
+#fileInput{display:none;}
+
+/* ── FILE MANAGER (compact bar) ── */
+.file-manager{background:var(--surface);border-bottom:1px solid var(--border);}
+.fm-bar{display:flex;align-items:center;gap:10px;padding:7px 20px;flex-wrap:wrap;}
+.fm-title{font-size:12px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.fm-chips{display:flex;flex-wrap:wrap;gap:6px;flex:1;}
+.fm-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;display:flex;align-items:center;gap:6px;color:var(--text);}
+.fm-chip .chip-meta{color:var(--text3);font-size:10px;}
+.fm-del{background:none;border:none;color:var(--text3);font-size:13px;line-height:1;padding:0 2px;transition:color .2s;}
+.fm-del:hover{color:var(--red);}
+.fm-toggle{font-size:11px;color:var(--primary);background:none;border:none;white-space:nowrap;text-decoration:underline;}
+.fm-empty{color:var(--text3);font-size:11px;font-style:italic;}
+.fm-list-full{padding:8px 20px 12px;display:none;}
+.fm-list-full.show{display:flex;flex-wrap:wrap;gap:8px;}
+.fm-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:12px;display:flex;align-items:center;gap:8px;}
+.fm-item-info{flex:1;min-width:0;}
+.fm-item-name{font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+.fm-item-meta{font-size:10px;color:var(--text3);margin-top:1px;}
+.fm-del-full{background:var(--red-bg);color:var(--red-text);border:none;border-radius:5px;padding:3px 8px;font-size:11px;transition:all .2s;}
+.fm-del-full:hover{background:var(--red);color:#fff;}
+
+/* ── FILTERS ── */
+.filters-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px;background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-top:14px;}
+.filter-label{font-size:11px;color:var(--text2);white-space:nowrap;font-weight:600;}
+.filter-input{border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;transition:border .2s;}
+.filter-input:focus{border-color:var(--primary);}
+.filter-sep{width:1px;height:22px;background:var(--border);margin:0 4px;}
+.reset-btn{background:transparent;border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;color:var(--text2);transition:all .2s;}
+.reset-btn:hover{background:var(--surface2);color:var(--text);}
+.filter-count{background:var(--accent);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;display:none;}
+
+/* ── EXPORT BAR ── */
+.export-bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px 0;}
+.export-btn{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 13px;font-size:12px;color:var(--text);transition:all .2s;font-weight:500;}
+.export-btn:hover{background:var(--surface2);border-color:var(--primary);color:var(--primary);}
+.last-updated{margin-left:auto;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px;padding:6px 0;}
+
+/* ── KPI ── */
+.section{padding:14px 20px 0;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:11px;}
+.kpi-card{background:var(--surface);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);border-left:4px solid var(--border);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.kpi-card::after{content:'';position:absolute;right:-20px;top:-20px;width:72px;height:72px;border-radius:50%;opacity:.06;}
+.kpi-card.c-green{border-color:var(--green)}.kpi-card.c-green::after{background:var(--green)}
+.kpi-card.c-red{border-color:var(--red)}.kpi-card.c-red::after{background:var(--red)}
+.kpi-card.c-blue{border-color:var(--blue)}.kpi-card.c-blue::after{background:var(--blue)}
+.kpi-card.c-yellow{border-color:var(--yellow)}.kpi-card.c-yellow::after{background:var(--yellow)}
+.kpi-card.c-purple{border-color:var(--purple)}.kpi-card.c-purple::after{background:var(--purple)}
+.kpi-card.c-teal{border-color:#14b8a6}.kpi-card.c-teal::after{background:#14b8a6}
+.kpi-label{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.6px;}
+.kpi-value{font-size:30px;font-weight:800;margin:5px 0 2px;line-height:1;}
+.kpi-card.c-green .kpi-value{color:var(--green-text)}
+.kpi-card.c-red .kpi-value{color:var(--red-text)}
+.kpi-card.c-blue .kpi-value{color:var(--blue-text)}
+.kpi-card.c-yellow .kpi-value{color:var(--yellow-text)}
+.kpi-card.c-purple .kpi-value{color:var(--purple-text)}
+.kpi-card.c-teal .kpi-value{color:#0f766e}
+.kpi-sub{font-size:11px;color:var(--text3);}
+.kpi-trend{position:absolute;top:12px;right:12px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;}
+.trend-up{background:var(--green-bg);color:var(--green-text)}
+.trend-down{background:var(--red-bg);color:var(--red-text)}
+[data-theme="dark"] .trend-up{background:rgba(34,197,94,.15)}
+[data-theme="dark"] .trend-down{background:rgba(239,68,68,.15)}
+
+/* ── INSIGHTS ── */
+.insights-banner{margin:14px 20px 0;background:linear-gradient(135deg,#0f3460,#1a4a8a);border-radius:var(--radius);padding:16px 20px;color:#fff;display:none;box-shadow:var(--shadow-md);}
+[data-theme="dark"] .insights-banner{background:linear-gradient(135deg,#0d1b2a,#1a3a5c);border:1px solid #1f4e8c;}
+.insights-banner h4{font-size:13px;font-weight:700;margin-bottom:10px;}
+.insights-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;}
+.insight-item{background:rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;font-size:12px;display:flex;align-items:flex-start;gap:8px;}
+.insight-item .icon{font-size:15px;flex-shrink:0;}
+.insight-item p{line-height:1.4;color:rgba(255,255,255,.9);}
+.insight-item strong{color:#fff;}
+
+/* ── TABS ── */
+.tabs-row{display:flex;gap:0;padding:14px 20px 0;border-bottom:1px solid var(--border);overflow-x:auto;}
+.tab-btn{padding:8px 16px;font-size:13px;font-weight:500;color:var(--text2);background:transparent;border:none;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;margin-bottom:-1px;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700;}
+[data-theme="dark"] .tab-btn.active{color:#388bfd;border-bottom-color:#388bfd;}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* ── CHART CARDS ── */
+.chart-card{background:var(--surface);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.card-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px;}
+.card-action{font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;transition:all .2s;}
+.card-action:hover{background:var(--border);}
+.chart-wrap{position:relative;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.col-2{grid-column:span 2;}
+
+/* ── TABLES ── */
+.rank-table{width:100%;border-collapse:collapse;font-size:12px;}
+.rank-table th{background:var(--surface2);color:var(--text2);font-weight:600;padding:8px 10px;text-align:left;position:sticky;top:0;border-bottom:2px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+.rank-table th:hover{background:var(--border);}
+.rank-table td{padding:7px 10px;border-bottom:1px solid var(--border);}
+.rank-table tr:hover td{background:var(--surface2);}
+.table-wrap{overflow:auto;max-height:380px;}
+.sorted-asc::after{content:' ▲';font-size:9px;}
+.sorted-desc::after{content:' ▼';font-size:9px;}
+.badge{display:inline-block;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;}
+.badge-ok{background:var(--green-bg);color:var(--green-text)}
+.badge-warn{background:var(--purple-bg);color:var(--purple-text)}
+.badge-fail{background:var(--red-bg);color:var(--red-text)}
+[data-theme="dark"] .badge-ok{background:rgba(34,197,94,.15);color:#86efac}
+[data-theme="dark"] .badge-warn{background:rgba(139,92,246,.15);color:#c4b5fd}
+[data-theme="dark"] .badge-fail{background:rgba(239,68,68,.15);color:#fca5a5}
+.pct-bar{display:flex;align-items:center;gap:6px;min-width:110px;}
+.pct-track{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.pct-fill{height:100%;border-radius:3px;transition:width .5s;}
+.row-count{font-size:11px;color:var(--text3);font-weight:400;}
+.rank-num{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+.rank-n{background:var(--surface2);color:var(--text2);font-size:11px;}
+
+/* ── WEEK CARDS ── */
+.week-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;}
+.week-card{background:var(--surface2);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border);}
+.week-card h5{font-size:12px;font-weight:700;margin-bottom:7px;}
+.week-stat{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:3px;}
+.week-stat span{font-weight:600;color:var(--text);}
+.week-rate{font-size:22px;font-weight:800;margin:5px 0 2px;}
+
+/* ── CALENDAR ── */
+.cal-cell{aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:default;position:relative;transition:transform .15s;}
+.cal-cell:hover{transform:scale(1.3);z-index:2;}
+.cal-cell .cal-tip{display:none;position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:5px 8px;border-radius:6px;white-space:nowrap;font-size:10px;z-index:10;}
+.cal-cell:hover .cal-tip{display:block;}
+
+/* ── MISC ── */
+.empty-state{text-align:center;padding:50px 20px;color:var(--text3);}
+.empty-state .icon{font-size:48px;margin-bottom:12px;display:block;}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+
+/* ── LOADING ── */
+.page-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;}
+.page-overlay.show{display:flex;}
+.loading-box{background:var(--surface);border-radius:var(--radius);padding:28px 36px;text-align:center;box-shadow:var(--shadow-md);min-width:220px;}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-size:13px;color:var(--text2);}
+
+@media print{
+  .header-right,.import-section,.file-manager,.filters-bar,.export-bar,.tabs-row,.upload-progress{display:none!important;}
+  .tab-pane{display:block!important;}
+  .header{position:static;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+  @page{margin:12mm;size:A4 landscape;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ CONFIG MODAL (ชื่อเท่านั้น) ═══════════════════ -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal-box" style="max-width:360px">
+    <div style="font-size:32px;text-align:center;margin-bottom:10px;">👤</div>
+    <div class="modal-title" style="text-align:center">ระบุชื่อของคุณ</div>
+    <div class="modal-sub" style="text-align:center">ชื่อนี้จะแสดงเมื่อคุณ Upload ไฟล์<br>ให้ทีมรู้ว่าใครอัปเดตข้อมูลล่าสุด</div>
+    <label class="form-label">ชื่อ-นามสกุล หรือชื่อเล่น</label>
+    <input class="form-input" id="cfgName" type="text" placeholder="เช่น สมชาย, ฝ่าย HR">
+    <button class="btn-primary" onclick="saveConfig()">✅ บันทึก</button>
+    <button class="btn-link" onclick="document.getElementById('configModal').classList.remove('show')">ข้าม</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ NAME MODAL ═══════════════════ -->
+<div class="modal-overlay" id="nameModal">
+  <div class="modal-box" style="max-width:360px">
+    <div style="font-size:28px;text-align:center;margin-bottom:10px;">👤</div>
+    <div class="modal-title" style="text-align:center">ระบุชื่อของคุณ</div>
+    <div class="modal-sub" style="text-align:center">เพื่อบันทึกว่าใคร Import ไฟล์นี้</div>
+    <label class="form-label">ชื่อ-นามสกุล หรือชื่อเล่น</label>
+    <input class="form-input" id="modalName" type="text" placeholder="เช่น สมชาย">
+    <button class="btn-primary" onclick="confirmName()">ยืนยัน</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ LOADING ═══════════════════ -->
+<div class="page-overlay" id="pageOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-msg" id="loadingMsg">กำลังเชื่อมต่อ...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">🛡️</div>
+    <div class="header-title">
+      <h1>Dashboard ตรวจจุด รปภ. <span style="font-size:10px;background:rgba(34,197,94,.2);color:#86efac;border-radius:4px;padding:1px 6px;vertical-align:middle;">LIVE</span></h1>
+      <p id="headerSub">กำลังเชื่อมต่อ...</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="rt-badge">
+      <div class="rt-dot" id="rtDot"></div>
+      <span id="rtText">กำลังเชื่อมต่อ</span>
+    </div>
+    <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px 11px;font-size:11px;color:rgba(255,255,255,.7);" id="userBadge">👤 —</div>
+    <button class="hbtn" onclick="toggleUploadPanel()" id="uploadToggleBtn">📂 Upload</button>
+    <button class="hbtn" onclick="openConfig()">⚙️ ตั้งค่า</button>
+    <button class="hbtn" onclick="toggleTheme()">🌙 <span id="themeLabel">Dark</span></button>
+    <button class="hbtn" onclick="window.print()">🖨️ Print</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ UPLOAD PANEL (slide-down) ═══════════════════ -->
+<div class="upload-panel" id="uploadPanel">
+  <div class="upload-panel-inner">
+    <div class="upload-drop" id="importZone" onclick="document.getElementById('fileInput').click()">
+      📂 <strong>คลิกหรือลากไฟล์ Excel มาวาง</strong>
+      <p>ข้อมูลขึ้น Database กลาง — ทุกคนเห็นทันที</p>
+    </div>
+    <div class="upload-controls">
+      <input class="import-name-input" id="importerName" type="text" placeholder="👤 ชื่อผู้ Upload">
+      <button class="import-btn" onclick="document.getElementById('fileInput').click()">+ เลือกไฟล์ Excel</button>
+    </div>
+  </div>
+  <div class="upload-progress" id="uploadProgress" style="margin:0 20px 12px;display:none;">
+    <div class="up-title" id="upTitle">กำลังอัปโหลด...</div>
+    <div class="up-bar-track"><div class="up-bar-fill" id="upFill"></div></div>
+    <div class="up-text" id="upText"></div>
+  </div>
+</div>
+<input type="file" id="fileInput" accept=".xlsx,.xls" multiple>
+
+<!-- ═══════════════════ FILE MANAGER (compact bar) ═══════════════════ -->
+<div class="file-manager" id="fileManager">
+  <div class="fm-bar">
+    <div class="fm-title">📁 ไฟล์ที่อัปโหลด:</div>
+    <div class="fm-chips" id="fmChips"><span class="fm-empty">ยังไม่มีไฟล์</span></div>
+    <button class="fm-toggle" id="fmToggleBtn" onclick="toggleFM()" style="display:none">รายละเอียด ▼</button>
+  </div>
+  <div class="fm-list-full" id="fmListFull"></div>
+</div>
+
+<!-- ═══════════════════ FILTERS ═══════════════════ -->
+<div class="filters-bar">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span class="filter-label">📅</span>
+    <input type="date" id="fDateFrom" class="filter-input" onchange="applyFilters()">
+    <span class="filter-label">—</span>
+    <input type="date" id="fDateTo" class="filter-input" onchange="applyFilters()">
+  </div>
+  <div class="filter-sep"></div>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span class="filter-label">👤</span>
+    <select id="fOfficer" class="filter-input" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span class="filter-label">📋</span>
+    <select id="fStatus" class="filter-input" onchange="applyFilters()">
+      <option value="">ทั้งหมด</option>
+      <option value="สำเร็จ">✅ สำเร็จ</option>
+      <option value="ไม่ครบ">⚠️ ไม่ครบ</option>
+      <option value="ไม่ตรวจ">❌ ไม่ตรวจ</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span class="filter-label">🏢</span>
+    <select id="fCompany" class="filter-input" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
+  </div>
+  <div class="filter-sep"></div>
+  <button class="reset-btn" onclick="resetFilters()">↺ รีเซ็ต</button>
+  <span class="filter-count" id="filterCount">0</span>
+</div>
+
+<!-- ═══════════════════ EXPORT BAR ═══════════════════ -->
+<div class="export-bar">
+  <button class="export-btn" onclick="exportExcel()">📊 Export Excel</button>
+  <button class="export-btn" onclick="exportCSV()">📄 Export CSV</button>
+  <button class="export-btn" onclick="window.print()">🖨️ Print / PDF</button>
+  <button class="export-btn" onclick="copyInsights()">📋 Copy สรุป</button>
+  <div class="last-updated">🕐 อัปเดตล่าสุด: <span id="lastUpdated">—</span></div>
+</div>
+
+<!-- ═══════════════════ KPI ═══════════════════ -->
+<div class="section">
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="empty-state" style="grid-column:1/-1">
+      <span class="icon">⏳</span><p>กำลังโหลดข้อมูลจาก Database...</p>
+    </div>
+  </div>
+</div>
+
+<!-- INSIGHTS -->
+<div class="insights-banner" id="insightsBanner">
+  <h4>⚡ ข้อสังเกตอัตโนมัติ</h4>
+  <div class="insights-list" id="insightsList"></div>
+</div>
+
+<!-- ═══════════════════ TABS ═══════════════════ -->
+<div class="tabs-row">
+  <button class="tab-btn active" onclick="switchTab('overview')">📈 ภาพรวม</button>
+  <button class="tab-btn" onclick="switchTab('daily')">📅 รายวัน</button>
+  <button class="tab-btn" onclick="switchTab('weekly')">📆 รายสัปดาห์</button>
+  <button class="tab-btn" onclick="switchTab('officer')">👤 แยก รปภ.</button>
+  <button class="tab-btn" onclick="switchTab('heatmap')">🗓️ Calendar</button>
+  <button class="tab-btn" onclick="switchTab('detail')">📋 รายละเอียด</button>
+</div>
+
+<!-- TAB OVERVIEW -->
+<div class="tab-pane active" id="tab-overview">
+  <div class="section">
+    <div class="grid-2">
+      <div class="chart-card col-2">
+        <div class="card-header">
+          <div class="card-title">📈 อัตราสำเร็จรายวัน + Trend</div>
+          <select id="chartDailyMode" class="card-action filter-input" onchange="renderOverviewCharts(filteredDetail)">
+            <option value="rate">อัตราสำเร็จ (%)</option>
+            <option value="count">จำนวนรอบ</option>
+          </select>
+        </div>
+        <div class="chart-wrap" style="height:230px"><canvas id="chartDaily"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:11px">
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">📊 สัดส่วนสถานะ</div></div>
+        <div class="chart-wrap" style="height:190px"><canvas id="chartDonut"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">🕐 รอบตามชั่วโมง</div></div>
+        <div class="chart-wrap" style="height:190px"><canvas id="chartHour"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB DAILY -->
+<div class="tab-pane" id="tab-daily">
+  <div class="section">
+    <div class="chart-card">
+      <div class="card-header"><div class="card-title">📅 สรุปรายวัน</div><span class="row-count" id="dailyCount"></span></div>
+      <div class="table-wrap">
+        <table class="rank-table" id="dailyTable">
+          <thead><tr>
+            <th onclick="sortTable('daily',0)">วันที่</th><th onclick="sortTable('daily',1)">วัน</th>
+            <th onclick="sortTable('daily',2)">รอบทั้งหมด</th><th onclick="sortTable('daily',3)">สำเร็จ</th>
+            <th onclick="sortTable('daily',4)">ไม่ครบ</th><th onclick="sortTable('daily',5)">ไม่ตรวจ</th>
+            <th onclick="sortTable('daily',6)">ตรงเวลา</th><th onclick="sortTable('daily',7)">เกินเวลา</th>
+            <th onclick="sortTable('daily',8)">เฉลี่ย(นาที)</th><th onclick="sortTable('daily',9)">อัตราสำเร็จ</th>
+          </tr></thead>
+          <tbody id="dailyTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB WEEKLY -->
+<div class="tab-pane" id="tab-weekly">
+  <div class="section">
+    <div class="chart-card" style="margin-bottom:11px">
+      <div class="card-header"><div class="card-title">📆 อัตราสำเร็จรายสัปดาห์</div></div>
+      <div class="chart-wrap" style="height:210px"><canvas id="chartWeekly"></canvas></div>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+</div>
+
+<!-- TAB OFFICER -->
+<div class="tab-pane" id="tab-officer">
+  <div class="section">
+    <div class="grid-2" style="margin-bottom:11px">
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">🏆 อัตราสำเร็จ รปภ.</div></div>
+        <div class="chart-wrap" style="height:210px"><canvas id="chartOfficerRate"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">📦 จำนวนรอบ รปภ.</div></div>
+        <div class="chart-wrap" style="height:210px"><canvas id="chartOfficerCount"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="card-header"><div class="card-title">🏅 อันดับ รปภ.</div><span class="row-count" id="officerCount"></span></div>
+      <div class="table-wrap">
+        <table class="rank-table" id="officerTable">
+          <thead><tr>
+            <th style="width:38px">#</th><th onclick="sortTable('officer',1)">ชื่อ</th>
+            <th onclick="sortTable('officer',2)">รอบทั้งหมด</th><th onclick="sortTable('officer',3)">สำเร็จ</th>
+            <th onclick="sortTable('officer',4)">ไม่ครบ</th><th onclick="sortTable('officer',5)">ไม่ตรวจ</th>
+            <th onclick="sortTable('officer',6)">ตรงเวลา</th><th onclick="sortTable('officer',7)">เกินเวลา</th>
+            <th onclick="sortTable('officer',8)">เฉลี่ย(นาที)</th><th onclick="sortTable('officer',9)">อัตราสำเร็จ</th>
+          </tr></thead>
+          <tbody id="officerTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB HEATMAP -->
+<div class="tab-pane" id="tab-heatmap">
+  <div class="section">
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">🗓️ Calendar Heatmap</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
+          <span>ต่ำ</span>
+          <div style="display:flex;gap:2px">
+            <div style="width:13px;height:13px;border-radius:3px;background:#fee2e2"></div>
+            <div style="width:13px;height:13px;border-radius:3px;background:#fca5a5"></div>
+            <div style="width:13px;height:13px;border-radius:3px;background:#fcd34d"></div>
+            <div style="width:13px;height:13px;border-radius:3px;background:#86efac"></div>
+            <div style="width:13px;height:13px;border-radius:3px;background:#22c55e"></div>
+          </div>
+          <span>สูง</span>
+        </div>
+      </div>
+      <div id="calendarHeatmap"></div>
+    </div>
+    <div class="grid-2" style="margin-top:11px">
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">📆 สรุปตามวันในสัปดาห์</div></div>
+        <div class="chart-wrap" style="height:190px"><canvas id="chartDow"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div class="card-title">🌙 สรุปตาม Shift</div></div>
+        <div class="chart-wrap" style="height:190px"><canvas id="chartShift"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB DETAIL -->
+<div class="tab-pane" id="tab-detail">
+  <div class="section">
+    <div class="chart-card">
+      <div class="card-header"><div class="card-title">📋 รายละเอียดทุกรอบ</div><span class="row-count" id="detailCount"></span></div>
+      <div class="table-wrap">
+        <table class="rank-table" id="detailTable">
+          <thead><tr>
+            <th onclick="sortTable('detail',0)">วันที่</th><th onclick="sortTable('detail',1)">รอบ</th>
+            <th onclick="sortTable('detail',2)">ช่วงเวลา</th><th onclick="sortTable('detail',3)">รปภ.</th>
+            <th onclick="sortTable('detail',4)">ตรวจ/ทั้งหมด</th>
+            <th onclick="sortTable('detail',5)">ตรงเวลา</th><th onclick="sortTable('detail',6)">เกินเวลา</th>
+            <th onclick="sortTable('detail',7)">ไม่ตรวจ</th><th onclick="sortTable('detail',8)">นาที</th>
+            <th onclick="sortTable('detail',9)">สถานะ</th>
+            <th>Import โดย</th><th>บริษัท</th>
+          </tr></thead>
+          <tbody id="detailTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:40px"></div>
+
+<!-- ═══════════════════ SCRIPT ═══════════════════ -->
+<script>
+// ──────────────────────────────────────────────
+// STATE
+// ──────────────────────────────────────────────
+// ── HARDCODED CONFIG — ไม่ต้องตั้งค่าทุกเครื่อง ──
+const SUPABASE_URL = 'https://qfppyxcffoixxrataxcl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_76BJC7qb6nrJeWR6LtMOsw_Oax4WWcF';
+
+let db = null;
+let allData = [];        // raw from Supabase
+let filteredDetail = []; // after client-side filters
+let charts = {};
+let fmVisible = false;
+let uploadPanelOpen = false;
+let sortState = { daily:{col:0,asc:true}, officer:{col:9,asc:false}, detail:{col:0,asc:true} };
+let pendingFileCallback = null;
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadTheme();
+  const savedName = localStorage.getItem('sb_name') || '';
+  if (savedName) {
+    document.getElementById('importerName').value = savedName;
+    document.getElementById('userBadge').textContent = '👤 ' + savedName;
+  } else {
+    // ครั้งแรกที่เปิด ถามชื่อ
+    document.getElementById('configModal').classList.add('show');
+  }
+  // เชื่อมต่ออัตโนมัติทุกครั้ง ไม่ต้องตั้งค่า
+  initSupabase({ url: SUPABASE_URL, key: SUPABASE_ANON_KEY });
+});
+
+// ──────────────────────────────────────────────
+// SUPABASE
+// ──────────────────────────────────────────────
+async function initSupabase(cfg) {
+  showOverlay('กำลังเชื่อมต่อ Supabase...');
+  try {
+    db = supabase.createClient(cfg.url, cfg.key);
+    await loadData();
+    subscribeRealtime();
+  } catch(e) {
+    hideOverlay();
+    setRtStatus('error', 'เชื่อมต่อไม่ได้');
+    showEmpty('เชื่อมต่อ Supabase ไม่ได้: ' + e.message);
+  }
+}
+
+async function loadData() {
+  try {
+    const { data, error } = await db.from('patrol_rounds').select('*');
+    if (error) throw error;
+    allData = (data || []).map(mapRow);
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString('th-TH');
+    buildFilterOptions();
+    applyFilters();
+    await loadFileList();
+    hideOverlay();
+    const companies = [...new Set(allData.map(r=>r.company))].join(' / ');
+    document.getElementById('headerSub').textContent = companies || 'ยังไม่มีข้อมูล';
+  } catch(e) {
+    hideOverlay();
+    console.error('loadData error:', e);
+  }
+}
+
+function subscribeRealtime() {
+  db.channel('patrol-rt')
+    .on('postgres_changes', { event:'*', schema:'public', table:'patrol_rounds' }, () => {
+      loadData();
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'imported_files' }, () => {
+      loadFileList();
+    })
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') setRtStatus('connected','Real-time เชื่อมต่อแล้ว');
+      else if (status === 'CHANNEL_ERROR') setRtStatus('error','Real-time ขัดข้อง');
+      else setRtStatus('','กำลังเชื่อมต่อ...');
+    });
+}
+
+function mapRow(r) {
+  return {
+    date: r.patrol_date, round: r.round_name, timeRange: r.time_range,
+    officer: r.officer||'', checked: r.checked_count||0, total: r.total_count||0,
+    onTime: r.on_time_count||0, late: r.late_count||0, skip: r.skip_count||0,
+    duration: r.duration_min||0, status: r.status||'', company: r.company||'',
+    importedBy: r.imported_by||'', fileName: r.file_name||''
+  };
+}
+
+// ──────────────────────────────────────────────
+// CONFIG
+// ──────────────────────────────────────────────
+function openConfig() {
+  document.getElementById('cfgName').value = localStorage.getItem('sb_name') || '';
+  document.getElementById('configModal').classList.add('show');
+}
+
+function saveConfig() {
+  const name = document.getElementById('cfgName').value.trim();
+  if (name) {
+    localStorage.setItem('sb_name', name);
+    document.getElementById('importerName').value = name;
+    document.getElementById('userBadge').textContent = '👤 ' + name;
+  }
+  document.getElementById('configModal').classList.remove('show');
+}
+
+// ──────────────────────────────────────────────
+// FILE UPLOAD
+// ──────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  [...e.target.files].forEach(f => startUpload(f));
+  e.target.value = '';
+});
+const iz = document.getElementById('importZone');
+iz.addEventListener('dragover', e => { e.preventDefault(); iz.classList.add('drag-over'); if(!uploadPanelOpen) toggleUploadPanel(); });
+iz.addEventListener('dragleave', () => iz.classList.remove('drag-over'));
+iz.addEventListener('drop', e => {
+  e.preventDefault(); iz.classList.remove('drag-over');
+  [...e.dataTransfer.files].filter(f=>/\.xlsx?$/i.test(f.name)).forEach(f=>startUpload(f));
+});
+
+function getImporterName() {
+  return document.getElementById('importerName').value.trim() || localStorage.getItem('sb_name') || 'ไม่ระบุ';
+}
+
+function startUpload(file) {
+  if (!db) { alert('กรุณาตั้งค่า Supabase ก่อน'); openConfig(); return; }
+  const reader = new FileReader();
+  reader.onload = e => processUpload(e.target.result, file.name);
+  reader.readAsArrayBuffer(file);
+}
+
+async function processUpload(buffer, fileName) {
+  const wb = XLSX.read(buffer, { type:'array' });
+  const parsed = parseWorkbook(wb, fileName);
+  const rows = parsed.detail;
+  if (!rows.length) { alert('ไม่พบข้อมูลในไฟล์ ' + fileName); return; }
+
+  // Check duplicate
+  const { data: existing } = await db.from('imported_files').select('id,row_count').eq('file_name', fileName);
+  if (existing?.length) {
+    if (!confirm(`ไฟล์ "${fileName}" เคย import แล้ว (${existing[0].row_count} แถว)\nต้องการแทนที่ไหม?`)) return;
+    showUpload(fileName, 0, rows.length, 'กำลังลบข้อมูลเดิม...');
+    await db.from('patrol_rounds').delete().eq('file_name', fileName);
+    await db.from('imported_files').delete().eq('file_name', fileName);
+  }
+
+  const importer = getImporterName();
+  const dbRows = rows.map(r => ({
+    patrol_date:r.date, round_name:r.round, time_range:r.timeRange,
+    officer:r.officer, checked_count:r.checked, total_count:r.total,
+    on_time_count:r.onTime, late_count:r.late, skip_count:r.skip,
+    duration_min:r.duration, status:r.status, company:r.company,
+    file_name:fileName, imported_by:importer
+  }));
+
+  const CHUNK = 250;
+  for (let i=0; i<dbRows.length; i+=CHUNK) {
+    showUpload(fileName, i, dbRows.length, `อัปโหลด ${i+Math.min(CHUNK,dbRows.length-i)} / ${dbRows.length}`);
+    const { error } = await db.from('patrol_rounds').insert(dbRows.slice(i, i+CHUNK));
+    if (error) { alert('Error: ' + error.message); hideUpload(); return; }
+  }
+
+  await db.from('imported_files').insert({ file_name:fileName, company:parsed.company, row_count:rows.length, imported_by:importer });
+  hideUpload();
+  // auto-close upload panel after success
+  if (uploadPanelOpen) toggleUploadPanel();
+}
+
+function showUpload(name, done, total, msg) {
+  const el = document.getElementById('uploadProgress');
+  el.classList.add('show');
+  document.getElementById('upTitle').textContent = '⬆️ ' + name;
+  document.getElementById('upFill').style.width = (total ? Math.round(done/total*100) : 0) + '%';
+  document.getElementById('upText').textContent = msg || `${done} / ${total}`;
+}
+function hideUpload() { document.getElementById('uploadProgress').classList.remove('show'); }
+
+// ──────────────────────────────────────────────
+// FILE LIST
+// ──────────────────────────────────────────────
+async function loadFileList() {
+  if (!db) return;
+  const { data } = await db.from('imported_files').select('*').order('imported_at', { ascending:false });
+  const files = data || [];
+
+  // Compact chips
+  const chips = document.getElementById('fmChips');
+  const toggleBtn = document.getElementById('fmToggleBtn');
+  if (!files.length) {
+    chips.innerHTML = '<span class="fm-empty">ยังไม่มีไฟล์ — กด Upload เพื่อเพิ่ม</span>';
+    toggleBtn.style.display = 'none';
+  } else {
+    chips.innerHTML = files.map(f => {
+      const short = f.file_name.replace(/patrol-/i,'').replace(/\.xlsx?$/i,'').replace(/_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}/,'').slice(0,30);
+      return `<span class="fm-chip">📄 ${short} <span class="chip-meta">${f.row_count?.toLocaleString()} รอบ</span>
+        <button class="fm-del" onclick="deleteFile('${f.file_name.replace(/'/g,"\\'")}',event)" title="ลบ">×</button></span>`;
+    }).join('');
+    toggleBtn.style.display = 'block';
+  }
+
+  // Full list (expanded)
+  document.getElementById('fmListFull').innerHTML = files.map(f => {
+    const dt = new Date(f.imported_at).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
+    return `<div class="fm-item">
+      <div class="fm-item-info">
+        <div class="fm-item-name" title="${f.file_name}">📄 ${f.file_name}</div>
+        <div class="fm-item-meta">${f.row_count?.toLocaleString()} รอบ · โดย ${f.imported_by||'?'} · ${dt}</div>
+      </div>
+      <button class="fm-del-full" onclick="deleteFile('${f.file_name.replace(/'/g,"\\'")}',event)">🗑️ ลบ</button>
+    </div>`;
+  }).join('');
+}
+
+async function deleteFile(fileName, ev) {
+  if (ev) ev.stopPropagation();
+  if (!confirm(`ลบไฟล์ "${fileName}" และข้อมูลทั้งหมด?\nทุกคนจะไม่เห็นข้อมูลนี้อีก`)) return;
+  showOverlay('กำลังลบข้อมูล...');
+  await db.from('patrol_rounds').delete().eq('file_name', fileName);
+  await db.from('imported_files').delete().eq('file_name', fileName);
+  hideOverlay();
+}
+
+function toggleUploadPanel() {
+  uploadPanelOpen = !uploadPanelOpen;
+  document.getElementById('uploadPanel').classList.toggle('open', uploadPanelOpen);
+  document.getElementById('uploadToggleBtn').style.background = uploadPanelOpen ? 'rgba(34,197,94,.25)' : 'rgba(255,255,255,.1)';
+}
+
+function toggleFM() {
+  fmVisible = !fmVisible;
+  document.getElementById('fmListFull').classList.toggle('show', fmVisible);
+  document.getElementById('fmToggleBtn').textContent = fmVisible ? 'ย่อ ▲' : 'รายละเอียด ▼';
+}
+
+// ──────────────────────────────────────────────
+// PARSE EXCEL
+// ──────────────────────────────────────────────
+function parseWorkbook(wb, filename) {
+  let company = filename.replace(/\.xlsx?$/i,'').replace(/^patrol-/i,'').replace(/_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}/,'').trim();
+  const dailySheet = wb.Sheets['สรุปรายวัน'] || wb.Sheets[wb.SheetNames[0]];
+  const detailSheet = wb.Sheets['รายละเอียด'] || wb.Sheets[wb.SheetNames[1]||wb.SheetNames[0]];
+  const dailyRaw = XLSX.utils.sheet_to_json(dailySheet,{header:1,defval:null});
+  if (dailyRaw[0]?.[1]) company = String(dailyRaw[0][1]);
+  const detailRaw = XLSX.utils.sheet_to_json(detailSheet,{header:1,defval:null});
+  const detail = [];
+  for (let i=1;i<detailRaw.length;i++) {
+    const r=detailRaw[i]; if(!r?.[0]) continue;
+    detail.push({ date:String(r[0]), round:String(r[1]||''), timeRange:String(r[2]||''),
+      officer:String(r[3]||''), checked:+r[4]||0, total:+r[5]||0,
+      onTime:+r[6]||0, late:+r[7]||0, skip:+r[8]||0,
+      duration:+r[9]||0, status:String(r[10]||''), company });
+  }
+  return { company, detail };
+}
+
+// ──────────────────────────────────────────────
+// FILTERS
+// ──────────────────────────────────────────────
+function buildFilterOptions() {
+  const officerSet = new Set();
+  allData.forEach(r=>{ if(r.officer&&r.officer!=='ยังไม่รปภ.ตรวจ') r.officer.split(/,\s*/).forEach(o=>officerSet.add(o.trim())); });
+  const oSel=document.getElementById('fOfficer'), prev=oSel.value;
+  oSel.innerHTML='<option value="">ทั้งหมด</option>'+[...officerSet].sort().map(o=>`<option value="${o}">${o}</option>`).join('');
+  if(prev) oSel.value=prev;
+  const cSel=document.getElementById('fCompany'), prevC=cSel.value;
+  cSel.innerHTML='<option value="">ทั้งหมด</option>'+[...new Set(allData.map(r=>r.company))].map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(prevC) cSel.value=prevC;
+  const dates=allData.map(r=>r.date).filter(Boolean).sort();
+  if(dates.length) {
+    if(!document.getElementById('fDateFrom').value) document.getElementById('fDateFrom').value=thaiToISO(dates[0]);
+    if(!document.getElementById('fDateTo').value) document.getElementById('fDateTo').value=thaiToISO(dates[dates.length-1]);
+  }
+}
+
+function applyFilters() {
+  if(!allData.length){ showEmpty('ยังไม่มีข้อมูล — อัปโหลดไฟล์ Excel เพื่อเริ่มต้น'); return; }
+  const df=document.getElementById('fDateFrom').value, dt=document.getElementById('fDateTo').value;
+  const officer=document.getElementById('fOfficer').value, status=document.getElementById('fStatus').value, company=document.getElementById('fCompany').value;
+  let active=0; if(df||dt) active++; if(officer) active++; if(status) active++; if(company) active++;
+  const fc=document.getElementById('filterCount'); fc.textContent=active; fc.style.display=active?'inline':'none';
+
+  filteredDetail = allData.filter(r=>{
+    if(df && thaiToISO(r.date)<df) return false;
+    if(dt && thaiToISO(r.date)>dt) return false;
+    if(officer && !r.officer.includes(officer)) return false;
+    if(status && r.status!==status) return false;
+    if(company && r.company!==company) return false;
+    return true;
+  });
+
+  renderKPIs(filteredDetail);
+  renderInsights(filteredDetail);
+  renderOverviewCharts(filteredDetail);
+  renderDailyTable(filteredDetail);
+  renderWeeklyTab(filteredDetail);
+  renderOfficerTab(filteredDetail);
+  renderCalendarHeatmap(filteredDetail);
+  renderDetailTable(filteredDetail);
+}
+
+function resetFilters() {
+  ['fDateFrom','fDateTo'].forEach(id=>document.getElementById(id).value='');
+  ['fOfficer','fStatus','fCompany'].forEach(id=>document.getElementById(id).value='');
+  applyFilters();
+}
+
+function thaiToISO(s) {
+  const m=String(s||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m?`${m[3]}-${m[2]}-${m[1]}`:s||'';
+}
+
+// ──────────────────────────────────────────────
+// EMPTY / OVERLAY
+// ──────────────────────────────────────────────
+function showEmpty(msg) {
+  document.getElementById('kpiGrid').innerHTML=`<div class="empty-state" style="grid-column:1/-1"><span class="icon">📊</span><p>${msg}</p></div>`;
+  document.getElementById('insightsBanner').style.display='none';
+  destroyCharts();
+}
+function showOverlay(msg) { document.getElementById('loadingMsg').textContent=msg||'กำลังโหลด...'; document.getElementById('pageOverlay').classList.add('show'); }
+function hideOverlay() { document.getElementById('pageOverlay').classList.remove('show'); }
+
+// ──────────────────────────────────────────────
+// KPI
+// ──────────────────────────────────────────────
+function animateVal(el,target,suffix='',dur=600) {
+  if(!el) return;
+  const start=performance.now(); const isFloat=String(target).includes('.');
+  function step(now) {
+    const t=Math.min((now-start)/dur,1), ease=1-Math.pow(1-t,3), val=target*ease;
+    el.textContent=(isFloat?val.toFixed(1):Math.round(val).toLocaleString())+suffix;
+    if(t<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderKPIs(data) {
+  const total=data.length, success=data.filter(r=>r.status==='สำเร็จ').length;
+  const fail=data.filter(r=>r.status==='ไม่ครบ').length, skip=data.filter(r=>r.status==='ไม่ตรวจ').length;
+  const rate=total?Math.round(success/total*100):0;
+  const onTime=data.reduce((s,r)=>s+r.onTime,0), late=data.reduce((s,r)=>s+r.late,0);
+  const durs=data.filter(r=>r.duration>0).map(r=>r.duration);
+  const avgDur=durs.length?(durs.reduce((a,b)=>a+b)/durs.length).toFixed(1):0;
+  const officerSet=new Set(); data.forEach(r=>{if(r.officer&&r.officer!=='ยังไม่รปภ.ตรวจ') r.officer.split(/,\s*/).forEach(o=>officerSet.add(o.trim()));});
+  const sorted=[...data].sort((a,b)=>thaiToISO(a.date).localeCompare(thaiToISO(b.date)));
+  const half=Math.floor(sorted.length/2);
+  const r1=half?sorted.slice(0,half).filter(r=>r.status==='สำเร็จ').length/half*100:0;
+  const r2=sorted.slice(half).length?sorted.slice(half).filter(r=>r.status==='สำเร็จ').length/sorted.slice(half).length*100:0;
+  const diff=(r2-r1).toFixed(1);
+  const tClass=diff>0?'trend-up':diff<0?'trend-down':'';
+  const tLabel=diff>0?`▲ ${diff}%`:diff<0?`▼ ${Math.abs(diff)}%`:'→';
+
+  document.getElementById('kpiGrid').innerHTML=`
+    <div class="kpi-card c-blue"><div class="kpi-label">รอบทั้งหมด</div><div class="kpi-value" id="kv0">0</div><div class="kpi-sub">${data.reduce((s,r)=>s+r.checked,0).toLocaleString()} / ${data.reduce((s,r)=>s+r.total,0).toLocaleString()} จุด</div></div>
+    <div class="kpi-card c-green"><div class="kpi-label">อัตราสำเร็จ</div><div class="kpi-value" id="kv1">0%</div><div class="kpi-trend ${tClass}">${tLabel}</div><div class="kpi-sub">สำเร็จ ${success.toLocaleString()} รอบ</div></div>
+    <div class="kpi-card c-red"><div class="kpi-label">ไม่ครบ/ไม่ตรวจ</div><div class="kpi-value" id="kv2">0</div><div class="kpi-sub">ไม่ครบ ${fail} · ไม่ตรวจ ${skip}</div></div>
+    <div class="kpi-card c-green"><div class="kpi-label">ตรงเวลา (จุด)</div><div class="kpi-value" id="kv3">0</div><div class="kpi-sub">เกินเวลา ${late.toLocaleString()} จุด</div></div>
+    <div class="kpi-card c-purple"><div class="kpi-label">เฉลี่ยเวลา/รอบ</div><div class="kpi-value" id="kv4">0</div><div class="kpi-sub">นาที (${durs.length.toLocaleString()} รอบ)</div></div>
+    <div class="kpi-card c-teal"><div class="kpi-label">จำนวน รปภ.</div><div class="kpi-value" id="kv5">0</div><div class="kpi-sub">ที่มีรอบในช่วงนี้</div></div>`;
+  animateVal(document.getElementById('kv0'),total);
+  animateVal(document.getElementById('kv1'),rate,'%');
+  animateVal(document.getElementById('kv2'),fail+skip);
+  animateVal(document.getElementById('kv3'),onTime);
+  animateVal(document.getElementById('kv4'),parseFloat(avgDur));
+  animateVal(document.getElementById('kv5'),officerSet.size);
+}
+
+// ──────────────────────────────────────────────
+// INSIGHTS
+// ──────────────────────────────────────────────
+function renderInsights(data) {
+  const ins=[]; if(!data.length){document.getElementById('insightsBanner').style.display='none';return;}
+  const byDate={}; data.forEach(r=>{if(!byDate[r.date]) byDate[r.date]={t:0,s:0}; byDate[r.date].t++; if(r.status==='สำเร็จ') byDate[r.date].s++;});
+  const da=Object.entries(byDate).map(([d,v])=>({d,rate:v.t?v.s/v.t*100:0}));
+  if(da.length>1){
+    const best=da.reduce((a,b)=>b.rate>a.rate?b:a), worst=da.reduce((a,b)=>b.rate<a.rate?b:a);
+    ins.push({icon:'🏆',text:`วันที่ดีที่สุด: <strong>${best.d}</strong> อัตราสำเร็จ <strong>${best.rate.toFixed(0)}%</strong>`});
+    if(worst.rate<100) ins.push({icon:'⚠️',text:`วันที่ต่ำสุด: <strong>${worst.d}</strong> อัตราสำเร็จ <strong>${worst.rate.toFixed(0)}%</strong>`});
+  }
+  const offMap=buildOfficerStats(data);
+  const top=[...offMap].sort((a,b)=>b.rate-a.rate).filter(o=>o.total>=3&&o.name!=='(ว่าง)')[0];
+  const botFail=[...offMap].sort((a,b)=>b.fail-a.fail).filter(o=>o.name!=='(ว่าง)')[0];
+  if(top) ins.push({icon:'⭐',text:`รปภ. ดีที่สุด: <strong>${top.name}</strong> (${top.rate}% จาก ${top.total} รอบ)`});
+  if(botFail?.fail>0) ins.push({icon:'📌',text:`รปภ. มีรอบไม่ครบมากสุด: <strong>${botFail.name}</strong> (${botFail.fail} รอบ)`});
+  const late=data.reduce((s,r)=>s+r.late,0), ot=data.reduce((s,r)=>s+r.onTime,0);
+  if(late>0) ins.push({icon:'⏰',text:`จุดเกินเวลา: <strong>${late.toLocaleString()}</strong> จุด (${Math.round(late/(late+ot)*100)}%)`});
+  const sk=data.filter(r=>r.status==='ไม่ตรวจ').length;
+  if(sk>0) ins.push({icon:'❌',text:`รอบที่ไม่มีการตรวจเลย: <strong>${sk}</strong> รอบ`});
+  const hb={}; data.forEach(r=>{const m=r.round.match(/(\d{2}):\d{2}/);if(m){const h=+m[1];if(!hb[h]) hb[h]={t:0,s:0};hb[h].t++;if(r.status==='สำเร็จ') hb[h].s++;}});
+  const ha=Object.entries(hb).map(([h,v])=>({h:+h,rate:v.t?v.s/v.t*100:0,t:v.t})).filter(x=>x.t>=3);
+  if(ha.length){const wh=ha.reduce((a,b)=>b.rate<a.rate?b:a);if(wh.rate<80) ins.push({icon:'🕐',text:`ชั่วโมงมีปัญหาสุด: รอบ <strong>${String(wh.h).padStart(2,'0')}:00</strong> (${wh.rate.toFixed(0)}%)`});}
+  document.getElementById('insightsList').innerHTML=ins.map(i=>`<div class="insight-item"><span class="icon">${i.icon}</span><p>${i.text}</p></div>`).join('');
+  document.getElementById('insightsBanner').style.display=ins.length?'block':'none';
+}
+
+// ──────────────────────────────────────────────
+// CHARTS
+// ──────────────────────────────────────────────
+function destroyCharts(){Object.values(charts).forEach(c=>c?.destroy());charts={};}
+const dark=()=>document.documentElement.dataset.theme==='dark';
+function gcfg(ov={}){
+  const g=dark()?'rgba(255,255,255,.07)':'rgba(0,0,0,.05)', tc=dark()?'#8b949e':'#94a3b8';
+  return deepMerge({responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc,font:{size:11}}}},scales:{x:{grid:{color:g,display:false},ticks:{color:tc,font:{size:9}}},y:{grid:{color:g},ticks:{color:tc,font:{size:10}}}}},ov);
+}
+function deepMerge(t,s){const r=Object.assign({},t);for(const k in s){if(s[k]&&typeof s[k]==='object'&&!Array.isArray(s[k])) r[k]=deepMerge(t[k]||{},s[k]);else r[k]=s[k];}return r;}
+
+function renderOverviewCharts(data){
+  ['chartDaily','chartDonut','chartHour'].forEach(id=>{if(charts[id]){charts[id].destroy();delete charts[id];}});
+  const mode=document.getElementById('chartDailyMode')?.value||'rate';
+  const bd={}; data.forEach(r=>{if(!bd[r.date]) bd[r.date]={t:0,s:0};bd[r.date].t++;if(r.status==='สำเร็จ') bd[r.date].s++;});
+  const dates=Object.keys(bd).sort((a,b)=>thaiToISO(a).localeCompare(thaiToISO(b)));
+  const rates=dates.map(d=>bd[d].t?Math.round(bd[d].s/bd[d].t*100):0);
+  const ma=rates.map((_,i)=>{const sl=rates.slice(Math.max(0,i-3),i+4);return Math.round(sl.reduce((a,b)=>a+b)/sl.length);});
+  const ctx1=document.getElementById('chartDaily')?.getContext('2d');
+  if(ctx1){
+    charts.chartDaily=new Chart(ctx1,{data:{labels:dates.map(d=>d.replace('/2026','')),datasets:[
+      {type:'bar',data:mode==='rate'?rates:dates.map(d=>bd[d].t),backgroundColor:mode==='rate'?rates.map(r=>r>=90?'#22c55e':r>=70?'#f59e0b':'#ef4444'):'#3b82f6',borderRadius:4,yAxisID:'y'},
+      ...(mode==='rate'?[{type:'line',label:'MA (7 วัน)',data:ma,borderColor:'#0f3460',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y'}]:[])
+    ]},options:gcfg({scales:{y:{min:0,max:mode==='rate'?100:undefined,ticks:{callback:v=>mode==='rate'?v+'%':v}},x:{ticks:{maxRotation:45}}},plugins:{legend:{labels:{font:{size:10}}}}})});
+  }
+  const ctx2=document.getElementById('chartDonut')?.getContext('2d');
+  if(ctx2){
+    charts.chartDonut=new Chart(ctx2,{type:'doughnut',data:{labels:['สำเร็จ','ไม่ครบ','ไม่ตรวจ'],datasets:[{data:[data.filter(r=>r.status==='สำเร็จ').length,data.filter(r=>r.status==='ไม่ครบ').length,data.filter(r=>r.status==='ไม่ตรวจ').length],backgroundColor:['#22c55e','#8b5cf6','#ef4444'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'66%',plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:10,color:dark()?'#8b949e':'#64748b'}}}}});
+  }
+  const hb=Array(24).fill(0).map(()=>({s:0,f:0,sk:0}));
+  data.forEach(r=>{const m=r.round.match(/(\d{2}):\d{2}/);if(m){const h=+m[1];hb[h][r.status==='สำเร็จ'?'s':r.status==='ไม่ครบ'?'f':'sk']++;}});
+  const ctx3=document.getElementById('chartHour')?.getContext('2d');
+  if(ctx3){charts.chartHour=new Chart(ctx3,{type:'bar',data:{labels:Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00'),datasets:[{label:'สำเร็จ',data:hb.map(h=>h.s),backgroundColor:'#22c55e',borderRadius:3,stack:'s'},{label:'ไม่ครบ',data:hb.map(h=>h.f),backgroundColor:'#8b5cf6',borderRadius:3,stack:'s'},{label:'ไม่ตรวจ',data:hb.map(h=>h.sk),backgroundColor:'#ef4444',borderRadius:3,stack:'s'}]},options:gcfg({scales:{x:{stacked:true,ticks:{maxRotation:45}},y:{stacked:true}}})});}
+}
+
+function renderWeeklyChart(data){
+  if(charts.chartWeekly){charts.chartWeekly.destroy();delete charts.chartWeekly;}
+  const wm={}; data.forEach(r=>{const iso=thaiToISO(r.date);if(!iso) return;const d=new Date(iso),dow=d.getDay(),mon=new Date(d);mon.setDate(d.getDate()-((dow+6)%7));const wk=mon.toISOString().slice(0,10);if(!wm[wk]) wm[wk]={t:0,s:0};wm[wk].t++;if(r.status==='สำเร็จ') wm[wk].s++;});
+  const weeks=Object.keys(wm).sort();
+  const ctx=document.getElementById('chartWeekly')?.getContext('2d');
+  if(ctx){charts.chartWeekly=new Chart(ctx,{data:{labels:weeks.map(w=>{const d=new Date(w);return`สัปดาห์ ${d.getDate()}/${d.getMonth()+1}`;}),datasets:[{type:'bar',label:'รอบทั้งหมด',data:weeks.map(w=>wm[w].t),backgroundColor:'rgba(59,130,246,.35)',borderRadius:4,yAxisID:'y2'},{type:'line',label:'อัตราสำเร็จ (%)',data:weeks.map(w=>wm[w].t?Math.round(wm[w].s/wm[w].t*100):0),borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,.1)',borderWidth:2.5,fill:true,tension:.4,yAxisID:'y',pointRadius:5,pointBackgroundColor:'#22c55e'}]},options:gcfg({scales:{y:{min:0,max:100,position:'right',ticks:{callback:v=>v+'%'}},y2:{position:'left',grid:{display:false}}}})});}
+}
+
+function buildOfficerStats(data){
+  const map={};
+  data.forEach(r=>{const names=r.officer==='ยังไม่รปภ.ตรวจ'?['(ว่าง)']:r.officer.split(/,\s*/);names.forEach(name=>{name=name.trim();if(!name) return;if(!map[name]) map[name]={name,total:0,success:0,fail:0,skip:0,onTime:0,late:0,durs:[]};const o=map[name];o.total++;if(r.status==='สำเร็จ') o.success++;else if(r.status==='ไม่ครบ') o.fail++;else o.skip++;o.onTime+=r.onTime;o.late+=r.late;if(r.duration>0) o.durs.push(r.duration);});});
+  return Object.values(map).map(o=>({...o,rate:o.total?Math.round(o.success/o.total*100):0,avgDur:o.durs.length?Math.round(o.durs.reduce((a,b)=>a+b)/o.durs.length):0}));
+}
+
+function renderOfficerCharts(data){
+  ['chartOfficerRate','chartOfficerCount'].forEach(id=>{if(charts[id]){charts[id].destroy();delete charts[id];}});
+  const stats=buildOfficerStats(data).filter(o=>o.name!=='(ว่าง)').sort((a,b)=>b.rate-a.rate).slice(0,12);
+  const names=stats.map(o=>o.name.replace('นาย','').replace('นาง','').trim());
+  const ctx1=document.getElementById('chartOfficerRate')?.getContext('2d');
+  if(ctx1){charts.chartOfficerRate=new Chart(ctx1,{type:'bar',data:{labels:names,datasets:[{label:'อัตราสำเร็จ (%)',data:stats.map(o=>o.rate),backgroundColor:stats.map(o=>o.rate>=90?'#22c55e':o.rate>=70?'#f59e0b':'#ef4444'),borderRadius:4}]},options:gcfg({indexAxis:'y',scales:{x:{min:0,max:100,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}},plugins:{legend:{display:false}}})});}
+  const byCount=buildOfficerStats(data).filter(o=>o.name!=='(ว่าง)').sort((a,b)=>b.total-a.total).slice(0,12);
+  const ctx2=document.getElementById('chartOfficerCount')?.getContext('2d');
+  if(ctx2){charts.chartOfficerCount=new Chart(ctx2,{type:'bar',data:{labels:byCount.map(o=>o.name.replace('นาย','').replace('นาง','').trim()),datasets:[{label:'สำเร็จ',data:byCount.map(o=>o.success),backgroundColor:'#22c55e',borderRadius:3,stack:'s'},{label:'ไม่ครบ',data:byCount.map(o=>o.fail),backgroundColor:'#8b5cf6',borderRadius:3,stack:'s'},{label:'ไม่ตรวจ',data:byCount.map(o=>o.skip),backgroundColor:'#ef4444',borderRadius:3,stack:'s'}]},options:gcfg({indexAxis:'y',scales:{x:{stacked:true},y:{stacked:true,grid:{display:false}}}})});}
+}
+
+function renderHeatmapCharts(data){
+  ['chartDow','chartShift'].forEach(id=>{if(charts[id]){charts[id].destroy();delete charts[id];}});
+  const db2=Array(7).fill(0).map(()=>({t:0,s:0}));
+  data.forEach(r=>{const iso=thaiToISO(r.date);if(!iso) return;const d=new Date(iso).getDay();db2[d].t++;if(r.status==='สำเร็จ') db2[d].s++;});
+  const ctx1=document.getElementById('chartDow')?.getContext('2d');
+  if(ctx1){charts.chartDow=new Chart(ctx1,{type:'bar',data:{labels:['อา','จ','อ','พ','พฤ','ศ','ส'],datasets:[{label:'อัตราสำเร็จ (%)',data:db2.map(b=>b.t?Math.round(b.s/b.t*100):0),backgroundColor:['#ef4444','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#22c55e'],borderRadius:5}]},options:gcfg({plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}})});}
+  const sh={'กลางคืน (00-06)':0,'เช้า (06-12)':0,'บ่าย (12-18)':0,'ดึก (18-24)':0};
+  data.forEach(r=>{const m=r.round.match(/(\d{2}):\d{2}/);if(!m) return;const h=+m[1],k=h<6?'กลางคืน (00-06)':h<12?'เช้า (06-12)':h<18?'บ่าย (12-18)':'ดึก (18-24)';sh[k]++;});
+  const ctx2=document.getElementById('chartShift')?.getContext('2d');
+  if(ctx2){charts.chartShift=new Chart(ctx2,{type:'doughnut',data:{labels:Object.keys(sh),datasets:[{data:Object.values(sh),backgroundColor:['#1e3a5f','#3b82f6','#f59e0b','#64748b'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{font:{size:10},color:dark()?'#8b949e':'#64748b',padding:8}}}}});}
+}
+
+// ──────────────────────────────────────────────
+// CALENDAR HEATMAP
+// ──────────────────────────────────────────────
+function renderCalendarHeatmap(data){
+  const bd={}; data.forEach(r=>{if(!bd[r.date]) bd[r.date]={t:0,s:0};bd[r.date].t++;if(r.status==='สำเร็จ') bd[r.date].s++;});
+  const isoMap={}; Object.entries(bd).forEach(([thai,v])=>{isoMap[thaiToISO(thai)]=v;});
+  const dates=Object.keys(isoMap).sort();
+  if(!dates.length){document.getElementById('calendarHeatmap').innerHTML='<p style="color:var(--text3);padding:20px;text-align:center">ไม่มีข้อมูล</p>';return;}
+  const minD=new Date(dates[0]),maxD=new Date(dates[dates.length-1]);
+  let html='',cur=new Date(minD.getFullYear(),minD.getMonth(),1);
+  while(cur<=maxD){
+    const yr=cur.getFullYear(),mo=cur.getMonth(),mn=cur.toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+    html+=`<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:7px">${mn}</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;max-width:270px">`;
+    ['อา','จ','อ','พ','พฤ','ศ','ส'].forEach(d=>html+=`<div style="font-size:9px;color:var(--text3);text-align:center;padding-bottom:3px">${d}</div>`);
+    const fd=new Date(yr,mo,1).getDay();
+    for(let i=0;i<fd;i++) html+='<div></div>';
+    const dim=new Date(yr,mo+1,0).getDate();
+    for(let day=1;day<=dim;day++){
+      const iso=`${yr}-${String(mo+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,v=isoMap[iso];
+      if(!v){html+=`<div style="aspect-ratio:1;border-radius:3px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3)">${day}</div>`;continue;}
+      const rt=v.t?v.s/v.t*100:0,bg=rt>=95?'#16a34a':rt>=80?'#86efac':rt>=60?'#fcd34d':rt>=40?'#fca5a5':'#ef4444',tc=rt>=80?'#fff':rt>=60?'#78350f':'#fff';
+      html+=`<div class="cal-cell" style="background:${bg};color:${tc}">${day}<div class="cal-tip">${iso}<br>สำเร็จ ${v.s}/${v.t} (${rt.toFixed(0)}%)</div></div>`;
+    }
+    html+='</div></div>';
+    cur=new Date(yr,mo+1,1);
+  }
+  document.getElementById('calendarHeatmap').innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:18px;padding-top:8px">${html}</div>`;
+}
+
+// ──────────────────────────────────────────────
+// TABLES
+// ──────────────────────────────────────────────
+function renderDailyTable(data){
+  const bd={}; data.forEach(r=>{if(!bd[r.date]) bd[r.date]={t:0,s:0,f:0,sk:0,ot:0,late:0,durs:[]};const d=bd[r.date];d.t++;if(r.status==='สำเร็จ') d.s++;else if(r.status==='ไม่ครบ') d.f++;else d.sk++;d.ot+=r.onTime;d.late+=r.late;if(r.duration>0) d.durs.push(r.duration);});
+  const DOW=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  let rows=Object.entries(bd).map(([d,v])=>{const rate=v.t?Math.round(v.s/v.t*100):0,avg=v.durs.length?Math.round(v.durs.reduce((a,b)=>a+b)/v.durs.length):0,dow=DOW[new Date(thaiToISO(d)).getDay()]||'';return[d,dow,v.t,v.s,v.f,v.sk,v.ot,v.late,avg,rate];});
+  const st=sortState.daily; rows.sort((a,b)=>{let va=a[st.col],vb=b[st.col];if(st.col===0){va=thaiToISO(va);vb=thaiToISO(vb);}return st.asc?(typeof va==='number'?va-vb:String(va).localeCompare(String(vb))):(typeof vb==='number'?vb-va:String(vb).localeCompare(String(va)));});
+  updateSortH('dailyTable',st.col,st.asc);
+  document.getElementById('dailyCount').textContent=`${rows.length} วัน`;
+  document.getElementById('dailyTbody').innerHTML=rows.map(r=>{const rt=r[9],fc=rt>=90?'#22c55e':rt>=70?'#f59e0b':'#ef4444';return`<tr><td><strong>${r[0]}</strong></td><td style="color:var(--text2)">${r[1]}</td><td>${r[2]}</td><td style="color:#16a34a;font-weight:600">${r[3]}</td><td style="color:#7c3aed">${r[4]||'-'}</td><td style="color:#dc2626">${r[5]||'-'}</td><td style="color:#16a34a">${r[6].toLocaleString()}</td><td style="color:${r[7]>0?'#d97706':'var(--text3)'}">${r[7]||'-'}</td><td>${r[8]||'-'}</td><td><div class="pct-bar"><strong style="color:${fc};min-width:33px">${rt}%</strong><div class="pct-track"><div class="pct-fill" style="width:${rt}%;background:${fc}"></div></div></div></td></tr>`;}).join('');
+}
+
+function renderWeeklyTab(data){
+  renderWeeklyChart(data);
+  const wm={}; data.forEach(r=>{const iso=thaiToISO(r.date);if(!iso) return;const d=new Date(iso),dow=d.getDay(),mon=new Date(d);mon.setDate(d.getDate()-((dow+6)%7));const wk=mon.toISOString().slice(0,10);if(!wm[wk]) wm[wk]={t:0,s:0,f:0,sk:0,ot:0};const w=wm[wk];w.t++;if(r.status==='สำเร็จ') w.s++;else if(r.status==='ไม่ครบ') w.f++;else w.sk++;w.ot+=r.onTime;});
+  const weeks=Object.keys(wm).sort();
+  document.getElementById('weekGrid').innerHTML=weeks.map((wk,i)=>{const v=wm[wk],rate=v.t?Math.round(v.s/v.t*100):0,d=new Date(wk),d2=new Date(wk);d2.setDate(d.getDate()+6);const fc=rate>=90?'#16a34a':rate>=70?'#d97706':'#dc2626';return`<div class="week-card"><h5>สัปดาห์ที่ ${i+1} (${d.getDate()}/${d.getMonth()+1} – ${d2.getDate()}/${d2.getMonth()+1})</h5><div class="week-rate" style="color:${fc}">${rate}%</div><div class="week-stat">รอบทั้งหมด <span>${v.t}</span></div><div class="week-stat">สำเร็จ <span style="color:#16a34a">${v.s}</span></div><div class="week-stat">ไม่สำเร็จ <span style="color:#dc2626">${v.f+v.sk}</span></div><div class="week-stat">ตรงเวลา <span>${v.ot.toLocaleString()} จุด</span></div></div>`;}).join('');
+}
+
+function renderOfficerTab(data){
+  renderOfficerCharts(data);
+  const stats=buildOfficerStats(data);
+  const st=sortState.officer,keys=['name','name','total','success','fail','skip','onTime','late','avgDur','rate'];
+  const sorted=[...stats].sort((a,b)=>{const va=a[keys[st.col]],vb=b[keys[st.col]];return st.asc?(typeof va==='number'?va-vb:String(va).localeCompare(String(vb))):(typeof vb==='number'?vb-va:String(vb).localeCompare(String(va)));});
+  updateSortH('officerTable',st.col,st.asc);
+  document.getElementById('officerCount').textContent=`${sorted.filter(o=>o.name!=='(ว่าง)').length} คน`;
+  const byTotal=[...stats].filter(o=>o.name!=='(ว่าง)').sort((a,b)=>b.total-a.total);
+  const rmap={}; byTotal.forEach((o,i)=>rmap[o.name]=i+1);
+  document.getElementById('officerTbody').innerHTML=sorted.map(o=>{const rank=rmap[o.name]||99,rc=o.rate>=90?'#16a34a':o.rate>=70?'#d97706':'#dc2626',fc=o.rate>=90?'#22c55e':o.rate>=70?'#f59e0b':'#ef4444';return`<tr><td><span class="rank-num rank-n" style="${rank<=3?['background:#ffd700;color:#7a5200','background:#c0c0c0;color:#444','background:#cd7f32;color:#fff'][rank-1]:''}"> ${rank<=3?['🥇','🥈','🥉'][rank-1]:rank}</span></td><td><strong>${o.name}</strong></td><td>${o.total}</td><td style="color:#16a34a;font-weight:600">${o.success}</td><td>${o.fail?`<span class="badge badge-warn">${o.fail}</span>`:'-'}</td><td>${o.skip?`<span class="badge badge-fail">${o.skip}</span>`:'-'}</td><td style="color:#16a34a">${o.onTime.toLocaleString()}</td><td style="color:${o.late>0?'#d97706':'var(--text3)'}">${o.late||'-'}</td><td>${o.avgDur||'-'}</td><td><div class="pct-bar"><strong style="color:${rc};min-width:33px">${o.rate}%</strong><div class="pct-track"><div class="pct-fill" style="width:${o.rate}%;background:${fc}"></div></div></div></td></tr>`;}).join('');
+}
+
+function renderDetailTable(data){
+  const st=sortState.detail,keys=['date','round','timeRange','officer','checked','onTime','late','skip','duration','status'];
+  const sorted=[...data].sort((a,b)=>{let va=a[keys[st.col]],vb=b[keys[st.col]];if(st.col===0){va=thaiToISO(va);vb=thaiToISO(vb);}return st.asc?(typeof va==='number'?va-vb:String(va).localeCompare(String(vb))):(typeof vb==='number'?vb-va:String(vb).localeCompare(String(va)));});
+  updateSortH('detailTable',st.col,st.asc);
+  const LIMIT=500;
+  document.getElementById('detailCount').textContent=`${sorted.length.toLocaleString()} รายการ`;
+  const rows=sorted.slice(0,LIMIT).map(r=>{const pct=r.total?Math.round(r.checked/r.total*100):0,pfc=pct>=100?'#22c55e':pct>=70?'#f59e0b':'#ef4444',badge=r.status==='สำเร็จ'?'badge-ok':r.status==='ไม่ครบ'?'badge-warn':'badge-fail',label=r.status==='สำเร็จ'?'✅ สำเร็จ':r.status==='ไม่ครบ'?'⚠️ ไม่ครบ':'❌ ไม่ตรวจ';return`<tr><td>${r.date}</td><td style="white-space:nowrap">${r.round}</td><td style="font-size:11px;color:var(--text2)">${r.timeRange}</td><td>${r.officer}</td><td><div class="pct-bar"><span>${r.checked}/${r.total}</span><div class="pct-track"><div class="pct-fill" style="width:${pct}%;background:${pfc}"></div></div></div></td><td style="color:#16a34a">${r.onTime}</td><td style="color:${r.late>0?'#d97706':'var(--text3)'}">${r.late||'-'}</td><td style="color:${r.skip>0?'#dc2626':'var(--text3)'}">${r.skip||'-'}</td><td>${r.duration||'-'}</td><td><span class="badge ${badge}">${label}</span></td><td style="font-size:11px;color:var(--text3)">${r.importedBy||'-'}</td><td style="font-size:11px;color:var(--text3);max-width:130px;overflow:hidden;text-overflow:ellipsis">${r.company}</td></tr>`;});
+  if(sorted.length>LIMIT) rows.push(`<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:10px">แสดง ${LIMIT.toLocaleString()} รายการแรกจาก ${sorted.length.toLocaleString()}</td></tr>`);
+  document.getElementById('detailTbody').innerHTML=rows.join('');
+}
+
+// ──────────────────────────────────────────────
+// SORT / TAB / UTILS
+// ──────────────────────────────────────────────
+function sortTable(type,col){const st=sortState[type];if(st.col===col) st.asc=!st.asc;else{st.col=col;st.asc=true;}if(type==='daily') renderDailyTable(filteredDetail);else if(type==='officer') renderOfficerTab(filteredDetail);else renderDetailTable(filteredDetail);}
+function updateSortH(tid,col,asc){document.querySelectorAll(`#${tid} th`).forEach((th,i)=>{th.classList.remove('sorted-asc','sorted-desc');if(i===col) th.classList.add(asc?'sorted-asc':'sorted-desc');});}
+function switchTab(name){document.querySelectorAll('.tab-btn').forEach((b,i)=>{b.classList.toggle('active',['overview','daily','weekly','officer','heatmap','detail'][i]===name);});document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');if(filteredDetail.length){if(name==='weekly') renderWeeklyChart(filteredDetail);if(name==='officer') renderOfficerCharts(filteredDetail);if(name==='heatmap') renderHeatmapCharts(filteredDetail);}}
+
+// ──────────────────────────────────────────────
+// THEME
+// ──────────────────────────────────────────────
+function toggleTheme(){const isDark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=isDark?'light':'dark';document.getElementById('themeLabel').textContent=isDark?'Dark':'Light';localStorage.setItem('theme',document.documentElement.dataset.theme);if(filteredDetail.length){destroyCharts();renderOverviewCharts(filteredDetail);renderOfficerCharts(filteredDetail);renderHeatmapCharts(filteredDetail);}}
+function loadTheme(){const t=localStorage.getItem('theme');if(t){document.documentElement.dataset.theme=t;document.getElementById('themeLabel').textContent=t==='dark'?'Light':'Dark';}}
+
+// ──────────────────────────────────────────────
+// RT STATUS
+// ──────────────────────────────────────────────
+function setRtStatus(state,text){const dot=document.getElementById('rtDot'),tx=document.getElementById('rtText');dot.className='rt-dot'+(state?' '+state:'');tx.textContent=text;}
+
+// ──────────────────────────────────────────────
+// EXPORT
+// ──────────────────────────────────────────────
+function exportExcel(){
+  if(!filteredDetail.length){alert('ไม่มีข้อมูล');return;}
+  const wb2=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet([['วันที่','รอบ','ช่วงเวลา','รปภ.','ตรวจแล้ว','ทั้งหมด','ตรงเวลา','เกินเวลา','ไม่ตรวจ','เวลา(นาที)','สถานะ','Import โดย','บริษัท'],...filteredDetail.map(r=>[r.date,r.round,r.timeRange,r.officer,r.checked,r.total,r.onTime,r.late,r.skip,r.duration,r.status,r.importedBy,r.company])]),'รายละเอียด');
+  const stats=buildOfficerStats(filteredDetail);
+  XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet([['รปภ.','รอบทั้งหมด','สำเร็จ','ไม่ครบ','ไม่ตรวจ','ตรงเวลา','เกินเวลา','เฉลี่ย(นาที)','อัตราสำเร็จ%'],...stats.map(o=>[o.name,o.total,o.success,o.fail,o.skip,o.onTime,o.late,o.avgDur,o.rate])]),'สรุปรปภ.');
+  XLSX.writeFile(wb2,`patrol-export-${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+function exportCSV(){if(!filteredDetail.length){alert('ไม่มีข้อมูล');return;}const h='วันที่,รอบ,รปภ.,สถานะ,ตรวจแล้ว,ทั้งหมด,ตรงเวลา,เกินเวลา\n';const r=filteredDetail.map(r=>[r.date,r.round,r.officer,r.status,r.checked,r.total,r.onTime,r.late].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');const b=new Blob(['﻿'+h+r],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`patrol-${Date.now()}.csv`;a.click();}
+function copyInsights(){const els=document.querySelectorAll('#insightsList .insight-item p');if(!els.length){alert('ไม่มีข้อสังเกต');return;}const t=filteredDetail.length,rt=t?Math.round(filteredDetail.filter(r=>r.status==='สำเร็จ').length/t*100):0;navigator.clipboard.writeText(`📊 สรุปผลตรวจจุด รปภ.\n🔢 ${t.toLocaleString()} รอบ | อัตราสำเร็จ ${rt}%\n\n${[...els].map(e=>e.innerText).join('\n')}`).then(()=>alert('คัดลอกแล้ว ✓')).catch(()=>alert('ไม่สามารถคัดลอกได้'));}
+
+function renderCharts(data){renderOverviewCharts(data);}
+</script>
+</body>
+</html>
